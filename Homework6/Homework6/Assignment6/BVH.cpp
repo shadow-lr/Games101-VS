@@ -13,7 +13,6 @@ BVHAccel::BVHAccel(std::vector<Object*> p, int maxPrimsInNode,
     if (primitives.empty())
         return;
 
-    splitMethod = SplitMethod::SAH;
     root = recursiveBuild(primitives);
 
     time(&stop);
@@ -22,9 +21,17 @@ BVHAccel::BVHAccel(std::vector<Object*> p, int maxPrimsInNode,
     int mins = ((int)diff / 60) - (hrs * 60);
     int secs = (int)diff - (hrs * 3600) - (mins * 60);
 
-    printf(
-        "\rBVH Generation complete: \nTime Taken: %i hrs, %i mins, %i secs\n\n",
-        hrs, mins, secs);
+    switch (splitMethod)
+    {
+    case BVHAccel::SplitMethod::NAIVE:
+        printf("\rBVH Generation complete: \nTime Taken: %i hrs, %i mins, %i secs\n\n", hrs, mins, secs);
+        break;
+    case BVHAccel::SplitMethod::SAH:
+        printf("\rSAH Generation complete: \nTime Taken: %i hrs, %i mins, %i secs\n\n", hrs, mins, secs);
+        break;
+    default:
+        break;
+    }
 }
 
 BVHBuildNode* BVHAccel::recursiveBuild(std::vector<Object*> objects)
@@ -33,6 +40,9 @@ BVHBuildNode* BVHAccel::recursiveBuild(std::vector<Object*> objects)
 
     // Compute bounds of all primitives in BVH node
     Bounds3 bounds;
+    std::vector<Object*> leftshapes;
+    std::vector<Object*> rightshapes;
+
     for (int i = 0; i < objects.size(); ++i)
     {
         bounds = Union(bounds, objects[i]->getBounds());
@@ -58,8 +68,6 @@ BVHBuildNode* BVHAccel::recursiveBuild(std::vector<Object*> objects)
         {
             centroidBounds = Union(centroidBounds, objects[i]->getBounds().Centroid());
         }
-        std::vector<Object*> leftshapes;
-        std::vector<Object*> rightshapes;
 
 		switch (splitMethod)
 		{
@@ -76,12 +84,18 @@ BVHBuildNode* BVHAccel::recursiveBuild(std::vector<Object*> objects)
         }
     }
 
+    assert(objects.size() == (leftshapes.size() + rightshapes.size()));
+
+    node->left = recursiveBuild(leftshapes);
+    node->right = recursiveBuild(rightshapes);
+
+    node->bounds = Union(node->left->bounds, node->right->bounds);
+
     return node;
 }
 
 void BVHAccel::BuildBVH(BVHBuildNode*& node, std::vector<Object*>& objects, Bounds3& centroidBounds, std::vector<Object*>& leftshapes, std::vector<Object*>& rightshapes)
 {
-	Bounds3 centroidBounds;
 	for (int i = 0; i < objects.size(); ++i)
 	{
 		// 包围盒中心点
@@ -119,106 +133,113 @@ void BVHAccel::BuildBVH(BVHBuildNode*& node, std::vector<Object*>& objects, Boun
 	leftshapes = std::vector<Object*>(beginning, middling);
 	// 拷贝mid right
 	rightshapes = std::vector<Object*>(middling, ending);
-
-	assert(objects.size() == (leftshapes.size() + rightshapes.size()));
-
-	node->left = recursiveBuild(leftshapes);
-	node->right = recursiveBuild(rightshapes);
-
-	node->bounds = Union(node->left->bounds, node->right->bounds);
 }
 
 void BVHAccel::BuildSAH(BVHBuildNode*& node, std::vector<Object*>& objects, Bounds3& centroidBounds, std::vector<Object*>& leftshapes, std::vector<Object*>& rightshapes)
 {
-    Bounds3 nBounds;
-    for (int i = 0; i < objects.size(); ++i)
-    {
-        nBounds = Union(nBounds, objects[i]->getBounds());
-    }
+    //Bounds3 nBounds;
+    //for (int i = 0; i < objects.size(); ++i)
+    //{
+    //    nBounds = Union(nBounds, objects[i]->getBounds());
+    //}
 
-    float nArea = centroidBounds.SurfaceArea();
+    //float nArea = centroidBounds.SurfaceArea();
 
-    int minCostCoor = 0;
-    int minCostIndex = 0;
+    //int minCostCoor = 0;
+    //int minCostIndex = 0;
 
-    float minCost = std::numeric_limits<float>::infinity();
+    //float minCost = std::numeric_limits<float>::infinity();
 
-    std::map<int, std::map<int, int>> indexMap;
+    //// <i, map<j bid>>
+    //// i : 哪个分量
+    //// j : 分几个桶
+    //// bid : 哈希映射的下标
+    //std::map<int, std::map<int, int>> indexMap;
 
-    // 每一个分量进行build
-    for (int i = 0; i < 3; ++i)
-    {
-        int bucketCount = 12;
-        std::vector<Bounds3> boundsBuckets;
-        std::vector<int> countBucket;
+    //int bucketCount = 12;
 
-        // 初始化每个桶
-        for (int j = 0; j < bucketCount; ++j)
-        {
-            boundsBuckets.push_back(Bounds3());
-            countBucket.push_back(0);
-        }
+    //// 每一个分量进行build
+    //for (int i = 0; i < 3; ++i)
+    //{
 
-        std::map<int, int> objMap;
+    //    // 初始化每个桶
+    //    std::vector<Bounds3> boundsBuckets;
+    //    std::vector<int> countBucket;
 
-        // traversal
-        for (int j = 0; j < objects.size(); ++j)
-        {
-            // 映射到0~12
-            int bid = bucketCount * (centroidBounds.Offset(objects[j]->getBounds().Centroid()))[i];
-            if (bid >= bucketCount)
-            {
-                bid = bucketCount - 1;
-            }
+    //    for (int i = 0; i < bucketCount; ++i)
+    //    {
+    //        boundsBuckets.push_back(Bounds3());
+    //        countBucket.push_back(0);
+    //    }
 
-            boundsBuckets[bid] = Union(boundsBuckets[bid], objects[j]->getBounds().Centroid());
-            countBucket[bid] += 1;
-            objMap.insert(std::make_pair(j, bid));
-        }
+    //    // object index mapping 桶 index
+    //    std::map<int, int> objMap;
 
-        indexMap.insert(std::make_pair(i, objMap));
+    //    // traversal
+    //    for (int j = 0; j < objects.size(); ++j)
+    //    {
+    //        // 映射到0~12
+    //        // bid 的大小 能体现当前object的Bounds离centroidBounds.pMin的距离远近
+    //        int bid = bucketCount * (centroidBounds.Offset(objects[j]->getBounds().Centroid()))[i];
+    //        if (bid >= bucketCount)
+    //        {
+    //            bid = bucketCount - 1;
+    //        }
 
-        for (int j = 1; j < boundsBuckets.size(); ++j)
-        {
-            Bounds3 A;
-            Bounds3 B;
-            int countA = 0;
-            int countB = 0;
-            
-            for (int k = 0; k < j; ++k)
-            {
-                A = Union(A, boundsBuckets[k]);
-                countA += countBucket[k];
-            }
+    //        boundsBuckets[bid] = Union(boundsBuckets[bid], objects[j]->getBounds().Centroid());
+    //        countBucket[bid] += 1;
+    //        objMap.insert(std::make_pair(j, bid));
+    //    }
 
-            for (int k = 0; k < boundsBuckets.size(); ++k)
-            {
-                B = Union(B, boundsBuckets[k]);
-                countB += countBucket[k];
-            }
+    //    indexMap.insert(std::make_pair(i, objMap));
 
-            float cost = 1 + (countA * A.SurfaceArea() + countB * B.SurfaceArea()) / nArea;
+    //    // 对于每一个划分，计算他所对应的花费，方法是对于桶中的每一个面积，计算他的花费，最后进行计算
+    //    // traversal from 1 to boundsBuckets.size() - 1 j∈[1, boundsBuckets.size() - 1]
+    //    for (int j = 1; j < boundsBuckets.size(); ++j)
+    //    {
+    //        Bounds3 A, B;
+    //        int countA = 0, countB = 0;
+    //        
+    //        // A计算前j个桶
+    //        for (int k = 0; k < j; ++k)
+    //        {
+    //            A = Union(A, boundsBuckets[k]);
+    //            countA += countBucket[k];
+    //        }
 
-            if (cost < minCost)
-            {
-                minCost = cost;
-                minCostIndex = j;
-                minCostCoor = i;
-            }
-        }
+    //        // B计算所有桶
+    //        for (int k = 0; k < boundsBuckets.size(); ++k)
+    //        {
+    //            B = Union(B, boundsBuckets[k]);
+    //            countB += countBucket[k];
+    //        }
+    //        
+    //        // 计算当前A包含前j个桶 占 总共桶的代价
+    //        float cost = 1 + (countA * A.SurfaceArea() + countB * B.SurfaceArea()) / nArea;
 
-        for (int i = 0; i < objects.size(); ++i)
-        {
-            if (indexMap[minCostCoor][i] < minCostIndex)
-            {
-                leftshapes.push_back(objects[i]);
-            }
-            else
-            {
-                rightshapes.push_back(objects[i]);
-            }
-        }
-    }
+    //        if (cost < minCost)
+    //        {
+    //            minCost = cost;
+    //            // A分j个桶的时候代价最小
+    //            minCostIndex = j;
+    //            // 分哪个分量的时候代价最小 (x, y, z)
+    //            minCostCoor = i;
+    //        }
+    //    }
+
+    //    for (int i = 0; i < objects.size(); ++i)
+    //    {
+    //        // bid < minCostIndex
+    //        if (indexMap[minCostCoor][i] < minCostIndex)
+    //        {
+    //            leftshapes.push_back(objects[i]);
+    //        }
+    //        else
+    //        {
+    //            rightshapes.push_back(objects[i]);
+    //        }
+    //    }
+    //}
 }
 
 Intersection BVHAccel::Intersect(const Ray& ray) const

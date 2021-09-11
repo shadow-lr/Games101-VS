@@ -34,6 +34,7 @@ public:
     Intersection intersect(const Ray& ray) const;
     BVHAccel *bvh;
     void buildBVH();
+    void buildSAH();
     Vector3f castRay(const Ray &ray, int depth) const;
     bool trace(const Ray &ray, const std::vector<Object*> &objects, float &tNear, uint32_t &index, Object **hitObject);
     std::tuple<Vector3f, Vector3f> HandleAreaLight(const AreaLight &light, const Vector3f &hitPoint, const Vector3f &N,

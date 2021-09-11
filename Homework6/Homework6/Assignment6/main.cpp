@@ -4,6 +4,7 @@
 #include "Vector.hpp"
 #include "global.hpp"
 #include <chrono>
+#include <direct.h>
 
 // In the main function of the program, we create the scene (create objects and
 // lights) as well as set the options for the render (image width and height,
@@ -11,6 +12,10 @@
 // function().
 int main(int argc, char** argv)
 {
+    char path_buff[1000];
+    _getcwd(path_buff, 1000);
+    std::cout << path_buff << std::endl;
+
     Scene scene(1280, 960);
 
     MeshTriangle bunny("./Homework6/Homework6/Assignment6/models/bunny/bunny.obj");
@@ -18,7 +23,8 @@ int main(int argc, char** argv)
     scene.Add(&bunny);
     scene.Add(std::make_unique<Light>(Vector3f(-20, 70, 20), 1));
     scene.Add(std::make_unique<Light>(Vector3f(20, 70, 20), 1));
-    scene.buildBVH();
+    //scene.buildBVH();
+    scene.buildSAH();
 
     Renderer r;
 
