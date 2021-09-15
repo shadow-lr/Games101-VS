@@ -7,7 +7,7 @@
 
 #include "Vector.hpp"
 
-enum MaterialType { DIFFUSE};
+enum MaterialType { DIFFUSE, SPECULAR, REFRECT};
 
 class Material{
 private:
@@ -71,19 +71,19 @@ private:
         // kt = 1 - kr;
     }
 
-    Vector3f toWorld(const Vector3f &a, const Vector3f &N){
-        Vector3f B, C;
-        if (std::fabs(N.x) > std::fabs(N.y)){
-            float invLen = 1.0f / std::sqrt(N.x * N.x + N.z * N.z);
-            C = Vector3f(N.z * invLen, 0.0f, -N.x *invLen);
-        }
-        else {
-            float invLen = 1.0f / std::sqrt(N.y * N.y + N.z * N.z);
-            C = Vector3f(0.0f, N.z * invLen, -N.y *invLen);
-        }
-        B = crossProduct(C, N);
-        return a.x * B + a.y * C + a.z * N;
-    }
+	Vector3f toWorld(const Vector3f& a, const Vector3f& N) {
+		Vector3f B, C;
+		if (std::fabs(N.x) > std::fabs(N.y)) {
+			float invLen = 1.0f / std::sqrt(N.x * N.x + N.z * N.z);
+			C = Vector3f(N.z * invLen, 0.0f, -N.x * invLen);
+		}
+		else {
+			float invLen = 1.0f / std::sqrt(N.y * N.y + N.z * N.z);
+			C = Vector3f(0.0f, N.z * invLen, -N.y * invLen);
+		}
+		B = crossProduct(C, N);
+		return a.x * B + a.y * C + a.z * N;
+	}
 
 public:
     MaterialType m_type;
@@ -129,20 +129,35 @@ Vector3f Material::getColorAt(double u, double v) {
 }
 
 
-Vector3f Material::sample(const Vector3f &wi, const Vector3f &N){
-    switch(m_type){
-        case DIFFUSE:
-        {
-            // uniform sample on the hemisphere
-            float x_1 = get_random_float(), x_2 = get_random_float();
-            float z = std::fabs(1.0f - 2.0f * x_1);
-            float r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
-            Vector3f localRay(r*std::cos(phi), r*std::sin(phi), z);
-            return toWorld(localRay, N);
+Vector3f Material::sample(const Vector3f& wi, const Vector3f& N)
+{
+	switch (m_type)
+    {
+	    case DIFFUSE:
+	    {
+		    // uniform sample on the hemisphere
+		    float x_1 = get_random_float(), x_2 = get_random_float();
+		    // z belongs to [-1, 1]
+		    float z = std::fabs(1.0f - 2.0f * x_1);
+		    // r belongs to [0, 1]
+		    // phi 半球的立体角是2pi
+		    float r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
+            // 均匀平滑r的分布 [0, 1]
+            // 采样大小和方向
+		    Vector3f localRay(r * std::cos(phi), r * std::sin(phi), z);
+		    return toWorld(localRay, N);
             
+		    break;
+	    }
+        case SPECULAR:
+        {
             break;
         }
-    }
+        case REFRECT:
+        {
+            break;
+        }
+	}
 }
 
 float Material::pdf(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
@@ -150,27 +165,47 @@ float Material::pdf(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
         case DIFFUSE:
         {
             // uniform sample probability 1 / (2 * PI)
-            if (dotProduct(wo, N) > 0.0f)
+            if (dotProduct(wo, N) > -EPSILON)
                 return 0.5f / M_PI;
             else
                 return 0.0f;
             break;
         }
+        case SPECULAR:
+        {
+            break;
+        }
+        case REFRECT:
+        {
+            break;
+        }
     }
 }
 
+/// <param name="wi">入射</param>
+/// <param name="wo">出射</param>
+/// <param name="N">法向量</param>
+/// <returns>return diffuse; Vector3f diffuse = Kd / M_PI;</returns>
 Vector3f Material::eval(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
     switch(m_type){
         case DIFFUSE:
         {
             // calculate the contribution of diffuse   model
             float cosalpha = dotProduct(N, wo);
-            if (cosalpha > 0.0f) {
+            if (cosalpha > -EPSILON) {
                 Vector3f diffuse = Kd / M_PI;
                 return diffuse;
             }
             else
                 return Vector3f(0.0f);
+            break;
+        }
+        case SPECULAR:
+        {
+            break;
+        }
+        case REFRECT:
+        {
             break;
         }
     }

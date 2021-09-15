@@ -19,28 +19,28 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Homework6\Homework6\Assignment6\AreaLight.hpp" />
-    <ClInclude Include="Homework6\Homework6\Assignment6\Bounds3.hpp" />
-    <ClInclude Include="Homework6\Homework6\Assignment6\BVH.hpp" />
-    <ClInclude Include="Homework6\Homework6\Assignment6\global.hpp" />
-    <ClInclude Include="Homework6\Homework6\Assignment6\Intersection.hpp" />
-    <ClInclude Include="Homework6\Homework6\Assignment6\Light.hpp" />
-    <ClInclude Include="Homework6\Homework6\Assignment6\Material.hpp" />
-    <ClInclude Include="Homework6\Homework6\Assignment6\Object.hpp" />
-    <ClInclude Include="Homework6\Homework6\Assignment6\OBJ_Loader.hpp" />
-    <ClInclude Include="Homework6\Homework6\Assignment6\Ray.hpp" />
-    <ClInclude Include="Homework6\Homework6\Assignment6\Renderer.hpp" />
-    <ClInclude Include="Homework6\Homework6\Assignment6\Scene.hpp" />
-    <ClInclude Include="Homework6\Homework6\Assignment6\Sphere.hpp" />
-    <ClInclude Include="Homework6\Homework6\Assignment6\Triangle.hpp" />
-    <ClInclude Include="Homework6\Homework6\Assignment6\Vector.hpp" />
+    <ClInclude Include="Homework7\Assignment7\AreaLight.hpp" />
+    <ClInclude Include="Homework7\Assignment7\Bounds3.hpp" />
+    <ClInclude Include="Homework7\Assignment7\BVH.hpp" />
+    <ClInclude Include="Homework7\Assignment7\global.hpp" />
+    <ClInclude Include="Homework7\Assignment7\Intersection.hpp" />
+    <ClInclude Include="Homework7\Assignment7\Light.hpp" />
+    <ClInclude Include="Homework7\Assignment7\Material.hpp" />
+    <ClInclude Include="Homework7\Assignment7\Object.hpp" />
+    <ClInclude Include="Homework7\Assignment7\OBJ_Loader.hpp" />
+    <ClInclude Include="Homework7\Assignment7\Ray.hpp" />
+    <ClInclude Include="Homework7\Assignment7\Renderer.hpp" />
+    <ClInclude Include="Homework7\Assignment7\Scene.hpp" />
+    <ClInclude Include="Homework7\Assignment7\Sphere.hpp" />
+    <ClInclude Include="Homework7\Assignment7\Triangle.hpp" />
+    <ClInclude Include="Homework7\Assignment7\Vector.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Homework6\Homework6\Assignment6\BVH.cpp" />
-    <ClCompile Include="Homework6\Homework6\Assignment6\main.cpp" />
-    <ClCompile Include="Homework6\Homework6\Assignment6\Renderer.cpp" />
-    <ClCompile Include="Homework6\Homework6\Assignment6\Scene.cpp" />
-    <ClCompile Include="Homework6\Homework6\Assignment6\Vector.cpp" />
+    <ClCompile Include="Homework7\Assignment7\BVH.cpp" />
+    <ClCompile Include="Homework7\Assignment7\main.cpp" />
+    <ClCompile Include="Homework7\Assignment7\Renderer.cpp" />
+    <ClCompile Include="Homework7\Assignment7\Scene.cpp" />
+    <ClCompile Include="Homework7\Assignment7\Vector.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -152,9 +152,10 @@
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
+      <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

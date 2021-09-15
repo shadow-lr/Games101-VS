@@ -108,22 +108,50 @@ Intersection BVHAccel::Intersect(const Ray& ray) const
 Intersection BVHAccel::getIntersection(BVHBuildNode* node, const Ray& ray) const
 {
     // TODO Traverse the BVH to find intersection
+    Intersection isect;
 
-}
 
-
-void BVHAccel::getSample(BVHBuildNode* node, float p, Intersection &pos, float &pdf){
-    if(node->left == nullptr || node->right == nullptr){
-        node->object->Sample(pos, pdf);
-        pdf *= node->area;
-        return;
+    if (node == nullptr)
+    {
+        return isect;
     }
-    if(p < node->left->area) getSample(node->left, p, pos, pdf);
-    else getSample(node->right, p - node->left->area, pos, pdf);
+
+    std::array<int, 3> dirIsNeg = { static_cast<int>(ray.direction.x > 0),static_cast<int>(ray.direction.y > 0),static_cast<int>(ray.direction.z > 0) };
+
+    if (!node->bounds.IntersectP(ray, ray.direction_inv, dirIsNeg))
+    {
+        return isect;
+    }
+
+    if (node->left == nullptr && node->right == nullptr)
+    {
+        isect = node->object->getIntersection(ray);
+        return isect;
+    }
+
+    Intersection leftHit, rightHit;
+
+    leftHit = getIntersection(node->left, ray);
+    rightHit = getIntersection(node->right, ray);
+
+    isect = leftHit.distance < rightHit.distance ? leftHit : rightHit;
+
+    return isect;
 }
 
-void BVHAccel::Sample(Intersection &pos, float &pdf){
-    float p = std::sqrt(get_random_float()) * root->area;
-    getSample(root, p, pos, pdf);
-    pdf /= root->area;
+
+void BVHAccel::getSample(BVHBuildNode* node, float p, Intersection& pos, float& pdf) {
+	if (node->left == nullptr || node->right == nullptr) {
+		node->object->Sample(pos, pdf);
+		pdf *= node->area;
+		return;
+	}
+	if (p < node->left->area) getSample(node->left, p, pos, pdf);
+	else getSample(node->right, p - node->left->area, pos, pdf);
+}
+
+void BVHAccel::Sample(Intersection& pos, float& pdf) {
+	float p = std::sqrt(get_random_float()) * root->area;
+	getSample(root, p, pos, pdf);
+	pdf /= root->area;
 }
