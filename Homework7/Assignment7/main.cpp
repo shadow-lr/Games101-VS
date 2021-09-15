@@ -6,6 +6,7 @@
 #include "global.hpp"
 #include <omp.h>
 #include <chrono>
+#include <direct.h>
 
 // In the main function of the program, we create the scene (create objects and
 // lights) as well as set the options for the render (image width and height,
@@ -14,7 +15,7 @@
 int main(int argc, char** argv)
 {
     // Change the definition here to change resolution
-    Scene scene(256, 256);
+    Scene scene(1024, 1024);
 
     // Vector3f(0.0f)是否是自发光
     Material* red = new Material(DIFFUSE, Vector3f(0.0f));
