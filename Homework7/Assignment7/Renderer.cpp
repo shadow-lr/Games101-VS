@@ -21,32 +21,40 @@ void Renderer::Render(const Scene& scene)
     float scale = tan(deg2rad(scene.fov * 0.5));
     float imageAspectRatio = scene.width / (float)scene.height;
     Vector3f eye_pos(278, 273, -800);
-    int m = 0;
+    //int m = 0;
 
     // change the spp value to change sample ammount
-    int spp = 500;
+    int spp = 1024;
     std::cout << "SPP: " << spp << "\n";
 
-    int thread_num = 4;
-    omp_set_num_threads(thread_num);
-    uint32_t per_thread_cover_sceneheight = scene.height / thread_num;
-#pragma omp parallel
-#pragma omp for
-    for (uint32_t j = 0; j < per_thread_cover_sceneheight; ++j) {
-        for (uint32_t i = 0; i < scene.width; ++i) {
-            // generate primary ray direction
-            int real_j = per_thread_cover_sceneheight * omp_get_num_threads();
-            float x = (2 * (i + 0.5) / (float)scene.width - 1) * imageAspectRatio * scale;
-            float y = (1 - 2 * (real_j + 0.5) / (float)scene.height) * scale;
+    int thread_num = 32;
+    int finish_num = 0;
+    int all_num = scene.height * scene.width;
 
-            Vector3f dir = normalize(Vector3f(-x, y, 1));
-            for (int k = 0; k < spp; k++){
-                framebuffer[m] += scene.castRay(Ray(eye_pos, dir), 0) / spp;  
+    omp_set_num_threads(thread_num);
+#pragma omp parallel
+    {
+#pragma omp for
+        for (int j = 0; j < scene.height; ++j) {
+            for (int i = 0; i < scene.width; ++i) {
+                // generate primary ray direction
+                float x = (2 * (i + 0.5) / (float)scene.width - 1) * imageAspectRatio * scale;
+                float y = (1 - 2 * (j + 0.5) / (float)scene.height) * scale;
+
+                Vector3f dir = normalize(Vector3f(-x, y, 1));
+
+                int write_index = j * scene.width + i;
+
+                for (int k = 0; k < spp; k++)
+                {
+                    framebuffer[write_index] += scene.castRay(Ray(eye_pos, dir), 0) / spp;
+                }
+#pragma omp critical
+                finish_num += 1;
+                //m++;
             }
-            //framebuffer[m] = framebuffer[m] / static_cast<float>(spp);
-            m++;
+            UpdateProgress(finish_num / (float)all_num);
         }
-        UpdateProgress(j / (float)scene.height);
     }
     UpdateProgress(1.f);
 

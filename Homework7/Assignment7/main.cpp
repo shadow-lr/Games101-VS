@@ -15,7 +15,7 @@
 int main(int argc, char** argv)
 {
     // Change the definition here to change resolution
-    Scene scene(1024, 1024);
+    Scene scene(782, 782);
 
     // Vector3f(0.0f)是否是自发光
     Material* red = new Material(DIFFUSE, Vector3f(0.0f));
