@@ -7,6 +7,10 @@
 #undef M_PI
 #define M_PI 3.141592653589793f
 
+const int thread_num = 32;
+
+static int thread_finish_count[thread_num + 1]{ 0 };
+
 static omp_lock_t lock;
 
 extern const float  EPSILON;
@@ -43,7 +47,6 @@ inline float get_random_float()
 inline void UpdateProgress(float progress)
 {
     int barWidth = 70;
-    //omp_set_lock(&lock);
     printf("[");
     int pos = barWidth * progress;
     for (int i = 0; i < barWidth; ++i) {
@@ -53,6 +56,23 @@ inline void UpdateProgress(float progress)
     }
     printf("] %d %\r", int(progress * 100.0));
     fflush(stdout);
-    //omp_unset_lock(&lock);
-    //std::cout.flush();
 };
+
+inline void UpdateAllProgress(float progress,int all_num)
+{
+    int barWidth = 70;
+    for (int i = 0; i < thread_num; ++i)
+    {
+        if (i % 4 == 0 && i != 0) printf("\n");
+        printf("Thread %d : ", omp_get_thread_num());
+        int pos = barWidth * thread_finish_count[omp_get_thread_num()] / (float)all_num;
+        for (int j = 0; j < barWidth; ++j)
+        {
+            if (j < pos)    printf("=");
+            else if (j == pos) printf(">");
+            else printf(" ");
+        }
+        printf("] %d %\r", int(progress * 100.0));
+    }
+    fflush(stdout);
+}

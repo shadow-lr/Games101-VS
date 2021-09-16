@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 {
     // Change the definition here to change resolution
     omp_init_lock(&lock);
-    Scene scene(782, 782);
+    Scene scene(1024, 1024);
 
     // Vector3f(0.0f)是否是自发光
     Material* red = new Material(DIFFUSE, Vector3f(0.0f));

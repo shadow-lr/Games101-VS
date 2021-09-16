@@ -8,7 +8,7 @@
 
 inline float deg2rad(const float& deg) { return deg * M_PI / 180.0; }
 
-const float EPSILON = 0.001f;
+const float EPSILON = 0.00016f;
 
 // The main render function. This where we iterate over all pixels in the image,
 // generate primary rays and cast these rays into the scene. The content of the
@@ -26,7 +26,6 @@ void Renderer::Render(const Scene& scene)
     int spp = 1024;
     std::cout << "SPP: " << spp << "\n";
 
-    int thread_num = 32;
     int finish_num = 0;
     int all_num = scene.height * scene.width;
 
@@ -50,20 +49,24 @@ void Renderer::Render(const Scene& scene)
                 }
 #pragma omp critical
                 finish_num += 1;
-                //m++;
+
+                //thread_finish_count[omp_get_thread_num()] += 1;
+
+                //UpdateAllProgress(finish_num / (float)all_num, all_num);
             }
-            //omp_set_lock(&lock);
-            if (omp_get_thread_num() == 0)
-            {
-                UpdateProgress(finish_num / (float)all_num);
-            }
-			//omp_destroy_lock(&lock);
         }
+//#pragma master
+//        {
+//            while (finish_num != all_num)
+//            {
+//                UpdateAllProgress(finish_num / (float)all_num, all_num);
+//            }
+//        }
     }
     UpdateProgress(1.f);
 
     // save framebuffer to file
-    FILE* fp = fopen("binary_pt_test_other.ppm", "wb");
+    FILE* fp = fopen("binary_pt_1024x1024_spp1024.ppm", "wb");
     (void)fprintf(fp, "P6\n%d %d\n255\n", scene.width, scene.height);
     for (auto i = 0; i < scene.height * scene.width; ++i) {
         static unsigned char color[3];
