@@ -8,8 +8,6 @@
 #include <chrono>
 #include <direct.h>
 
-static omp_lock_t lock;
-
 // In the main function of the program, we create the scene (create objects and
 // lights) as well as set the options for the render (image width and height,
 // maximum recursion depth, field-of-view, etc.). We then call the render
@@ -17,7 +15,7 @@ static omp_lock_t lock;
 int main(int argc, char** argv)
 {
     // Change the definition here to change resolution
-    omp_set_lock(&lock);
+    omp_init_lock(&lock);
     Scene scene(782, 782);
 
     // Vector3f(0.0f)是否是自发光

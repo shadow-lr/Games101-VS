@@ -2,9 +2,12 @@
 #include <iostream>
 #include <cmath>
 #include <random>
+#include <omp.h>
 
 #undef M_PI
 #define M_PI 3.141592653589793f
+
+static omp_lock_t lock;
 
 extern const float  EPSILON;
 const float kInfinity = std::numeric_limits<float>::max();
@@ -40,7 +43,7 @@ inline float get_random_float()
 inline void UpdateProgress(float progress)
 {
     int barWidth = 70;
-    omp_set_lock(&lock);
+    //omp_set_lock(&lock);
     printf("[");
     int pos = barWidth * progress;
     for (int i = 0; i < barWidth; ++i) {
@@ -50,6 +53,6 @@ inline void UpdateProgress(float progress)
     }
     printf("] %d %\r", int(progress * 100.0));
     fflush(stdout);
-    omp_unset_lock(&lock);
+    //omp_unset_lock(&lock);
     //std::cout.flush();
 };

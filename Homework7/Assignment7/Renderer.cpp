@@ -52,7 +52,12 @@ void Renderer::Render(const Scene& scene)
                 finish_num += 1;
                 //m++;
             }
-            UpdateProgress(finish_num / (float)all_num);
+            //omp_set_lock(&lock);
+            if (omp_get_thread_num() == 0)
+            {
+                UpdateProgress(finish_num / (float)all_num);
+            }
+			//omp_destroy_lock(&lock);
         }
     }
     UpdateProgress(1.f);
