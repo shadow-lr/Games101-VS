@@ -12,7 +12,6 @@
 #include "BVH.hpp"
 #include "Ray.hpp"
 
-
 class Scene
 {
 public:
@@ -21,7 +20,7 @@ public:
     int height = 960;
     double fov = 40;
     Vector3f backgroundColor = Vector3f(0.235294, 0.67451, 0.843137);
-    int maxDepth = 1;
+    int maxDepth = 2;
     float RussianRoulette = 0.8;
 
     Scene(int w, int h) : width(w), height(h)
@@ -34,6 +33,7 @@ public:
     const std::vector<std::unique_ptr<Light> >&  get_lights() const { return lights; }
     Intersection intersect(const Ray& ray) const;
     BVHAccel *bvh;
+    void build(BVHAccel::SplitMethod Method);
     void buildBVH();
     void buildSAH();
     Vector3f castRay(const Ray &ray, int depth) const;
@@ -53,8 +53,6 @@ public:
     {
         return I - 2 * dotProduct(I, N) * N;
     }
-
-
 
 // Compute refraction direction using Snell's law
 //
@@ -77,8 +75,6 @@ public:
         float k = 1 - eta * eta * (1 - cosi * cosi);
         return k < 0 ? 0 : eta * I + (eta * cosi - sqrtf(k)) * n;
     }
-
-
 
     // Compute Fresnel equation
 //

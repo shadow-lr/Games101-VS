@@ -24,7 +24,7 @@ void Renderer::Render(const Scene& scene)
     //int m = 0;
 
     // change the spp value to change sample ammount
-    int spp = 1024;
+    int spp = 800;
     std::cout << "SPP: " << spp << "\n";
 
     int finish_num = 0;
@@ -71,8 +71,26 @@ void Renderer::Render(const Scene& scene)
     }
     UpdateProgress(1.f);
 
+    // SSAA
+    /*int ssaa_sample = 4;
+    float sampling_period = 1 / ssaa_sample;
+
+    for (int x = 0; x <= scene.height; ++x){
+        for (int y = 0; y < scene.width; ++y) {
+            Vector3f color_sum{ 0,0,0 };
+            for (int i = 0; i < ssaa_sample; ++i) {
+                for (int j = 0; j < ssaa_sample; ++j) {
+                    int new_x = x + i * sampling_period;
+                    int new_y = y + j * sampling_period;
+                    
+                    color_sum += framebuffer[]
+                }
+            }
+        }
+    }*/
+
     // save framebuffer to file
-    FILE* fp = fopen("binary_pt_test_other.ppm", "wb");
+    FILE* fp = fopen("binary_pt_test_other_MaxDepth2_test_SAH.ppm", "wb");
     (void)fprintf(fp, "P6\n%d %d\n255\n", scene.width, scene.height);
     for (auto i = 0; i < scene.height * scene.width; ++i) {
         static unsigned char color[3];

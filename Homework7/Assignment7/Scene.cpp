@@ -4,6 +4,21 @@
 
 #include "Scene.hpp"
 
+void Scene::build(BVHAccel::SplitMethod Method)
+{
+    switch (Method)
+    {
+    case BVHAccel::SplitMethod::NAIVE:
+        this->buildBVH();
+        break;
+    case BVHAccel::SplitMethod::SAH:
+        this->buildSAH();
+        break;
+    default:
+        break;
+    }
+}
+
 void Scene::buildBVH() {
     printf(" - Generating BVH...\n\n");
     this->bvh = new BVHAccel(objects, 1, BVHAccel::SplitMethod::NAIVE);
@@ -11,9 +26,8 @@ void Scene::buildBVH() {
 
 void Scene::buildSAH()
 {
-    //void BuildSAH(BVHBuildNode * &node, std::vector<Object*> & objects, Bounds3 & centroidBounds, std::vector<Object*> & leftShapes, std::vector<Object*> & rightShapes);
-    //printf(" - Generating BVH...\n\n");
-    //this->bvh = new BVHAccel(objects, 1, BVHAccel::SplitMethod::NAIVE);
+    printf(" - Generating SAH...\n\n");
+    this->bvh = new BVHAccel(objects, 1, BVHAccel::SplitMethod::SAH);
 }
 
 Intersection Scene::intersect(const Ray &ray) const
@@ -60,7 +74,6 @@ bool Scene::trace(
         }
     }
 
-
     return (*hitObject != nullptr);
 }
 
@@ -68,6 +81,11 @@ bool Scene::trace(
 Vector3f Scene::castRay(const Ray &ray, int depth) const
 {
     // TO DO Implement Path Tracing Algorithm here
+
+    if (depth > maxDepth)
+    {
+        return {};
+    }
 
     Intersection objectInter = intersect(ray);
     if (!objectInter.happened)
@@ -125,7 +143,7 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
 	if (nextObjIntersection.happened && !nextObjIntersection.m->hasEmission())
 	{
 		m_pdf = objectInter.m->pdf(ray.direction, objRSample.normalized(), objectInter.normal);
-        Vector3f result = castRay(obj2NextObjRay, 1);
+        Vector3f result = castRay(obj2NextObjRay, depth + 1);
         result.x = clamp(0, 1, result.x);
         result.y = clamp(0, 1, result.y);
         result.z = clamp(0, 1, result.z);

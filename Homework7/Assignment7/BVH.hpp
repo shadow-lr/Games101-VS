@@ -40,6 +40,11 @@ public:
     // BVHAccel Private Methods
     BVHBuildNode* recursiveBuild(std::vector<Object*>objects);
 
+    void BuildBVH(BVHBuildNode*& node, std::vector<Object*>& objects, Bounds3& centroidBounds, std::vector<Object*>& leftShapes, std::vector<Object*>& rightShapes);
+
+    void BuildSAH(BVHBuildNode*& node, std::vector<Object*>& objects, Bounds3& centroidBounds, std::vector<Object*>& leftShapes, std::vector<Object*>& rightShapes);
+
+
     // BVHAccel Private Data
     const int maxPrimsInNode;
     const SplitMethod splitMethod;
@@ -50,20 +55,20 @@ public:
 };
 
 struct BVHBuildNode {
-    Bounds3 bounds;
-    BVHBuildNode *left;
-    BVHBuildNode *right;
-    Object* object;
-    float area;
+	Bounds3 bounds;
+	BVHBuildNode* left;
+	BVHBuildNode* right;
+	Object* object;
+	float area;
 
 public:
-    int splitAxis=0, firstPrimOffset=0, nPrimitives=0;
-    // BVHBuildNode Public Methods
-    BVHBuildNode(){
-        bounds = Bounds3();
-        left = nullptr;right = nullptr;
-        object = nullptr;
-    }
+	int splitAxis = 0, firstPrimOffset = 0, nPrimitives = 0;
+	// BVHBuildNode Public Methods
+	BVHBuildNode() {
+		bounds = Bounds3();
+		left = nullptr; right = nullptr;
+		object = nullptr;
+	}
 };
 
 

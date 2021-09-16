@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 {
     // Change the definition here to change resolution
     omp_init_lock(&lock);
-    Scene scene(200, 200);
+    Scene scene(1024, 1024);
 
     // Vector3f(0.0f)是否是自发光
     Material* red = new Material(DIFFUSE, Vector3f(0.0f));
@@ -28,23 +28,23 @@ int main(int argc, char** argv)
     Material* light = new Material(DIFFUSE, (8.0f * Vector3f(0.747f+0.058f, 0.747f+0.258f, 0.747f) + 15.6f * Vector3f(0.740f+0.287f,0.740f+0.160f,0.740f) + 18.4f *Vector3f(0.737f+0.642f,0.737f+0.159f,0.737f)));
     light->Kd = Vector3f(0.65f);
 
-    //Material* TallBoxSpecular = new Material()
+    BVHAccel::SplitMethod splitMethod = BVHAccel::SplitMethod::NAIVE;
 
-    MeshTriangle floor("./Homework7/Assignment7/models/cornellbox/floor.obj", white);
-    MeshTriangle shortbox("./Homework7/Assignment7/models/cornellbox/shortbox.obj", white);
-    MeshTriangle tallbox("./Homework7/Assignment7/models/cornellbox/tallbox.obj", white);
-    MeshTriangle left("./Homework7/Assignment7/models/cornellbox/left.obj", red);
-    MeshTriangle right("./Homework7/Assignment7/models/cornellbox/right.obj", green);
-    MeshTriangle light_("./Homework7/Assignment7/models/cornellbox/light.obj", light);
+	MeshTriangle floor("./Homework7/Assignment7/models/cornellbox/floor.obj", white, splitMethod);
+	MeshTriangle shortbox("./Homework7/Assignment7/models/cornellbox/shortbox.obj", white, splitMethod);
+	MeshTriangle tallbox("./Homework7/Assignment7/models/cornellbox/tallbox.obj", white, splitMethod);
+	MeshTriangle left("./Homework7/Assignment7/models/cornellbox/left.obj", red, splitMethod);
+	MeshTriangle right("./Homework7/Assignment7/models/cornellbox/right.obj", green, splitMethod);
+	MeshTriangle light_("./Homework7/Assignment7/models/cornellbox/light.obj", light, splitMethod);
 
-    scene.Add(&floor);
+	scene.Add(&floor);
     scene.Add(&shortbox);
     scene.Add(&tallbox);
     scene.Add(&left);
     scene.Add(&right);
     scene.Add(&light_);
 
-    scene.buildBVH();
+    scene.build(splitMethod);
 
     Renderer r;
 
