@@ -6,7 +6,6 @@
 #include "Scene.hpp"
 #include "Renderer.hpp"
 
-
 inline float deg2rad(const float& deg) { return deg * M_PI / 180.0; }
 
 const float EPSILON = 0.001f;

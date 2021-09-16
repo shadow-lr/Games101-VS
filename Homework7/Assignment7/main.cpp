@@ -8,6 +8,8 @@
 #include <chrono>
 #include <direct.h>
 
+static omp_lock_t lock;
+
 // In the main function of the program, we create the scene (create objects and
 // lights) as well as set the options for the render (image width and height,
 // maximum recursion depth, field-of-view, etc.). We then call the render
@@ -15,6 +17,7 @@
 int main(int argc, char** argv)
 {
     // Change the definition here to change resolution
+    omp_set_lock(&lock);
     Scene scene(782, 782);
 
     // Vector3f(0.0f)是否是自发光
@@ -55,6 +58,8 @@ int main(int argc, char** argv)
     std::cout << "Time taken: " << std::chrono::duration_cast<std::chrono::hours>(stop - start).count() << " hours\n";
     std::cout << "          : " << std::chrono::duration_cast<std::chrono::minutes>(stop - start).count() << " minutes\n";
     std::cout << "          : " << std::chrono::duration_cast<std::chrono::seconds>(stop - start).count() << " seconds\n";
+
+    omp_destroy_lock(&lock);
 
     return 0;
 }

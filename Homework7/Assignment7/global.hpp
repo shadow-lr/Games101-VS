@@ -40,7 +40,7 @@ inline float get_random_float()
 inline void UpdateProgress(float progress)
 {
     int barWidth = 70;
-
+    omp_set_lock(&lock);
     printf("[");
     int pos = barWidth * progress;
     for (int i = 0; i < barWidth; ++i) {
@@ -50,5 +50,6 @@ inline void UpdateProgress(float progress)
     }
     printf("] %d %\r", int(progress * 100.0));
     fflush(stdout);
+    omp_unset_lock(&lock);
     //std::cout.flush();
 };
