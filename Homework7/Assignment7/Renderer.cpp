@@ -3,6 +3,7 @@
 //
 
 #include <fstream>
+#include <chrono>
 #include "Scene.hpp"
 #include "Renderer.hpp"
 
@@ -28,6 +29,12 @@ void Renderer::Render(const Scene& scene)
 
     int finish_num = 0;
     int all_num = scene.height * scene.width;
+    int per_thread_num = all_num / thread_num;
+
+    // 每疫苗更新一次Progress
+    int time_interval = 3;
+
+    auto clock_start = std::chrono::system_clock::now();
 
     omp_set_num_threads(thread_num);
 #pragma omp parallel
@@ -50,23 +57,22 @@ void Renderer::Render(const Scene& scene)
 #pragma omp critical
                 finish_num += 1;
 
-                //thread_finish_count[omp_get_thread_num()] += 1;
+                thread_finish_count[omp_get_thread_num()] += 1;
 
-                //UpdateAllProgress(finish_num / (float)all_num, all_num);
+                auto clock_now = std::chrono::system_clock::now();
+                auto interval = std::chrono::duration_cast<std::chrono::seconds>(clock_now - clock_start).count();
+                if (interval >= time_interval)
+                {
+                    UpdateAllProgress(finish_num / (float)all_num, finish_num, all_num, per_thread_num);
+                    clock_start = clock_now;
+                }
             }
         }
-//#pragma master
-//        {
-//            while (finish_num != all_num)
-//            {
-//                UpdateAllProgress(finish_num / (float)all_num, all_num);
-//            }
-//        }
     }
     UpdateProgress(1.f);
 
     // save framebuffer to file
-    FILE* fp = fopen("binary_pt_1024x1024_spp1024.ppm", "wb");
+    FILE* fp = fopen("binary_pt_test_other.ppm", "wb");
     (void)fprintf(fp, "P6\n%d %d\n255\n", scene.width, scene.height);
     for (auto i = 0; i < scene.height * scene.width; ++i) {
         static unsigned char color[3];

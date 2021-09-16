@@ -58,21 +58,47 @@ inline void UpdateProgress(float progress)
     fflush(stdout);
 };
 
-inline void UpdateAllProgress(float progress,int all_num)
+inline void UpdateAllProgress(float progress, int finish_num, int all_num, int per_thread_num)
 {
-    int barWidth = 70;
-    for (int i = 0; i < thread_num; ++i)
-    {
-        if (i % 4 == 0 && i != 0) printf("\n");
-        printf("Thread %d : ", omp_get_thread_num());
-        int pos = barWidth * thread_finish_count[omp_get_thread_num()] / (float)all_num;
-        for (int j = 0; j < barWidth; ++j)
+#pragma omp critical
+	{
+		system("cls");
+		printf("\n");
+		for (int i = 0; i < thread_num; ++i)
+		{
+			if (i % 4 == 0 && i != 0) printf("\n");
+
+			printf("%3d  [", i);
+			float curThreadProgress = thread_finish_count[i] / (float)per_thread_num;
+			int present = int(curThreadProgress * 100.0);
+            int per_present_flag = 10;
+			int flag_num = present / per_present_flag;
+
+			for (int j = 0; j < per_present_flag; ++j)
+			{
+				if (j < flag_num) printf("|");
+				else printf(" ");
+			}
+
+			printf("%-3.1f\%]", (curThreadProgress * 100.0));
+            printf("\t");
+		}
+        printf("\nAll  [");
+
+        int total_present = int(progress * 100.0);
+        int per_present_flag = 10;
+        int flag_num = total_present / per_present_flag;
+
+        for (int j = 0; j < per_present_flag; ++j)
         {
-            if (j < pos)    printf("=");
-            else if (j == pos) printf(">");
+            if (j < flag_num) printf("|");
             else printf(" ");
         }
-        printf("] %d %\r", int(progress * 100.0));
-    }
-    fflush(stdout);
+
+        printf("%d/%d]", finish_num, all_num);
+        printf("\t");
+        printf("Tasks: %d; %d running", thread_num, omp_get_num_procs());
+
+        fflush(stdout);
+	}
 }

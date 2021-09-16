@@ -126,9 +126,9 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
 	{
 		m_pdf = objectInter.m->pdf(ray.direction, objRSample.normalized(), objectInter.normal);
         Vector3f result = castRay(obj2NextObjRay, 1);
-        /*result.x = clamp(0, 1, result.x);
+        result.x = clamp(0, 1, result.x);
         result.y = clamp(0, 1, result.y);
-        result.z = clamp(0, 1, result.z);*/
+        result.z = clamp(0, 1, result.z);
 		L_indir = result * objectInter.m->eval(ray.direction, objRSample.normalized(), objectInter.normal)
             * dotProduct(objRSample.normalized(), objectInter.normal) / m_pdf / RussianRoulette;
 	}
