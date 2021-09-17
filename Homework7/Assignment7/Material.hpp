@@ -7,7 +7,7 @@
 
 #include "Vector.hpp"
 
-enum MaterialType { DIFFUSE, SPECULAR, REFRECT};
+enum MaterialType { DIFFUSE, Microfacet};
 
 class Material{
 private:
@@ -43,9 +43,7 @@ private:
     // Compute Fresnel equation
     //
     // \param I is the incident view direction
-    //
     // \param N is the normal at the intersection point
-    //
     // \param ior is the material refractive index
     //
     // \param[out] kr is the amount of light reflected
@@ -71,6 +69,39 @@ private:
         // kt = 1 - kr;
     }
 
+	float GeometryFunction(const Vector3f& normal, const Vector3f& view2Point, const Vector3f& lightDir, float roughness) const
+	{
+		// GGX Schilick-Beckmann
+		// include Geometry Obstruction and Geometry Shadowing
+		// Smith's Method
+
+		// G(n, v, l, k) = Gsub(n, v, k)Gsub(n, l, k)
+		// kdirect = (a + 1) * (a + 1) / 8
+		float k = pow(roughness + 1, 2) / 8.0f;
+
+		float ggx1 = GeometryFunctionCalculate(normal, view2Point, k);
+		float ggx2 = GeometryFunctionCalculate(normal, lightDir, k);
+
+		return ggx1 * ggx2;
+	}
+
+	float GeometryFunctionCalculate(const Vector3f& normal, const Vector3f& temp, float k) const
+	{
+		float nDotTemp = dotProduct(normal, temp);
+		float nDotTempDotK = nDotTemp * (1 - k) + k;
+		return nDotTemp / nDotTempDotK;
+	}
+
+	float NormalDistributionFunction(const Vector3f& normal, const Vector3f& half_vector, float& roughness) const
+	{
+		// set : x = (n · h) * (n · h) * (a * a - 1) + 1
+        // NDF = a * a / (M_PI * x * x)
+        float a2 = roughness * roughness;
+        float nDotH2 = pow(dotProduct(normal, half_vector), 2);
+        float denom = M_PI * pow(nDotH2 * (a2 - 1) + 1, 2);
+        return denom;
+	}
+
 	Vector3f toWorld(const Vector3f& a, const Vector3f& N) {
 		Vector3f B, C;
 		if (std::fabs(N.x) > std::fabs(N.y)) {
@@ -86,34 +117,33 @@ private:
 	}
 
 public:
-    MaterialType m_type;
-    //Vector3f m_color;
-    Vector3f m_emission;
-    float ior;
-    Vector3f Kd, Ks;
-    float specularExponent;
-    //Texture tex;
+	MaterialType m_type;
+	//Vector3f m_color;
+	Vector3f m_emission;
+	float ior;
+	Vector3f Kd, Ks;
+	float specularExponent;
+	//Texture tex;
 
-    inline Material(MaterialType t=DIFFUSE, Vector3f e=Vector3f(0,0,0));
-    inline MaterialType getType();
-    //inline Vector3f getColor();
-    inline Vector3f getColorAt(double u, double v);
-    inline Vector3f getEmission();
-    inline bool hasEmission();
+	inline Material(MaterialType t = DIFFUSE, Vector3f e = Vector3f(0, 0, 0));
+	inline MaterialType getType();
+	//inline Vector3f getColor();
+	inline Vector3f getColorAt(double u, double v);
+	inline Vector3f getEmission();
+	inline bool hasEmission();
 
-    // sample a ray by Material properties
-    inline Vector3f sample(const Vector3f &wi, const Vector3f &N);
-    // given a ray, calculate the PdF of this ray
-    inline float pdf(const Vector3f &wi, const Vector3f &wo, const Vector3f &N);
-    // given a ray, calculate the contribution of this ray
-    inline Vector3f eval(const Vector3f &wi, const Vector3f &wo, const Vector3f &N);
-
+	// sample a ray by Material properties
+	inline Vector3f sample(const Vector3f& wi, const Vector3f& N);
+	// given a ray, calculate the PdF of this ray
+	inline float pdf(const Vector3f& wi, const Vector3f& wo, const Vector3f& N);
+	// given a ray, calculate the contribution of this ray
+	inline Vector3f eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& N);
 };
 
-Material::Material(MaterialType t, Vector3f e){
-    m_type = t;
-    //m_color = c;
-    m_emission = e;
+Material::Material(MaterialType t, Vector3f e) {
+	m_type = t;
+	//m_color = c;
+	m_emission = e;
 }
 
 MaterialType Material::getType(){return m_type;}
@@ -128,11 +158,17 @@ Vector3f Material::getColorAt(double u, double v) {
     return Vector3f();
 }
 
-
+/// <summary>
+/// 给定入射光线和法线，采样一个出射光线
+/// </summary>
+/// <param name="wi"></param>
+/// <param name="N"></param>
+/// <returns></returns>
 Vector3f Material::sample(const Vector3f& wi, const Vector3f& N)
 {
 	switch (m_type)
     {
+        // 对漫反射材质采样与入射光线无关
 	    case DIFFUSE:
 	    {
 		    // uniform sample on the hemisphere
@@ -149,13 +185,21 @@ Vector3f Material::sample(const Vector3f& wi, const Vector3f& N)
             
 		    break;
 	    }
-        case SPECULAR:
+        case Microfacet:
         {
-            break;
-        }
-        case REFRECT:
-        {
-            break;
+			// uniform sample on the hemisphere
+			float x_1 = get_random_float(), x_2 = get_random_float();
+			// z belongs to [-1, 1]
+			float z = std::fabs(1.0f - 2.0f * x_1);
+			// r belongs to [0, 1]
+			// phi 半球的立体角是2pi
+			float r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
+			// 均匀平滑r的分布 [0, 1]
+			// 采样大小和方向
+			Vector3f localRay(r * std::cos(phi), r * std::sin(phi), z);
+			return toWorld(localRay, N);
+
+			break;
         }
 	}
 }
@@ -171,12 +215,12 @@ float Material::pdf(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
                 return 0.0f;
             break;
         }
-        case SPECULAR:
+        case Microfacet:
         {
-            break;
-        }
-        case REFRECT:
-        {
+            if (dotProduct(wo, N) > -EPSILON)
+                return 0.5f / M_PI;
+            else
+                return 0.0f;
             break;
         }
     }
@@ -199,16 +243,37 @@ Vector3f Material::eval(const Vector3f &wi, const Vector3f &wo, const Vector3f &
             else
                 return Vector3f(0.0f);
             break;
-        }
-        case SPECULAR:
-        {
-            break;
-        }
-        case REFRECT:
-        {
-            break;
-        }
-    }
+		}
+		case Microfacet:
+		{
+			float cosalpha = dotProduct(N, wo);
+			if (cosalpha > -EPSILON) {
+				float roughness = 0.3;
+				float refractive = 0.2;
+
+				Vector3f Point2View = -wi;
+				Vector3f lightDir = wo;
+
+				Vector3f half_vector = (Point2View + lightDir).normalized();
+
+				float D = NormalDistributionFunction(N, half_vector, roughness);
+				float F;
+				float G = GeometryFunction(N, Point2View, lightDir, roughness);
+
+				fresnel(Point2View, N, refractive, F);
+
+				float crossWiWo = 4 * dotProduct(normalize(wi), normalize(N)) * dotProduct(normalize(wo), normalize(N));
+
+				float f_diffuse = 1.0f / M_PI;
+				float f_cook_torrance = D * F * G / (crossWiWo);
+
+				return Kd * f_diffuse + Ks * f_cook_torrance;
+			}
+			else
+				return Vector3f(0.0f);
+			break;
+		}
+	}
 }
 
 #endif //RAYTRACING_MATERIAL_H
