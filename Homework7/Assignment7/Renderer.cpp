@@ -24,7 +24,7 @@ void Renderer::Render(const Scene& scene)
     //int m = 0;
 
     // change the spp value to change sample ammount
-    int spp = 500;
+    int spp = 600;
     std::cout << "SPP: " << spp << "\n";
 
     int finish_num = 0;
@@ -40,35 +40,35 @@ void Renderer::Render(const Scene& scene)
 #pragma omp parallel
     {
 #pragma omp for
-        for (int j = 0; j < scene.height; ++j) {
-            for (int i = 0; i < scene.width; ++i) {
-                // generate primary ray direction
-                float x = (2 * (i + 0.5) / (float)scene.width - 1) * imageAspectRatio * scale;
-                float y = (1 - 2 * (j + 0.5) / (float)scene.height) * scale;
+		for (int j = 0; j < scene.height; ++j) {
+			for (int i = 0; i < scene.width; ++i) {
+				// generate primary ray direction
+				float x = (2 * (i + 0.5) / (float)scene.width - 1) * imageAspectRatio * scale;
+				float y = (1 - 2 * (j + 0.5) / (float)scene.height) * scale;
 
-                Vector3f dir = normalize(Vector3f(-x, y, 1));
+				Vector3f dir = normalize(Vector3f(-x, y, 1));
 
-                int write_index = j * scene.width + i;
+				int write_index = j * scene.width + i;
 
-                for (int k = 0; k < spp; k++)
-                {
-                    framebuffer[write_index] += scene.castRay(Ray(eye_pos, dir), 0) / spp;
-                }
+				for (int k = 0; k < spp; k++)
+				{
+					framebuffer[write_index] += scene.castRay(Ray(eye_pos, dir), 0) / spp;
+				}
 #pragma omp critical
-                finish_num += 1;
+				finish_num += 1;
 
-                thread_finish_count[omp_get_thread_num()] += 1;
+				thread_finish_count[omp_get_thread_num()] += 1;
 
-                auto clock_now = std::chrono::system_clock::now();
-                auto interval = std::chrono::duration_cast<std::chrono::seconds>(clock_now - clock_start).count();
-                if (interval >= time_interval)
-                {
-                    UpdateAllProgress(finish_num / (float)all_num, finish_num, all_num, per_thread_num);
-                    clock_start = clock_now;
-                }
-            }
-        }
-    }
+				auto clock_now = std::chrono::system_clock::now();
+				auto interval = std::chrono::duration_cast<std::chrono::seconds>(clock_now - clock_start).count();
+				if (interval >= time_interval)
+				{
+					UpdateAllProgress(finish_num / (float)all_num, finish_num, all_num, per_thread_num);
+					clock_start = clock_now;
+				}
+			}
+		}
+	}
     UpdateProgress(1.f);
 
     // SSAA

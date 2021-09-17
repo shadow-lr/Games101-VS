@@ -248,8 +248,8 @@ Vector3f Material::eval(const Vector3f &wi, const Vector3f &wo, const Vector3f &
 		{
 			float cosalpha = dotProduct(N, wo);
 			if (cosalpha > -EPSILON) {
-				float roughness = 0.3;
-				float refractive = 0.2;
+				float roughness = 0.8;
+				float refractive = 1.25;
 
 				Vector3f Point2View = -wi;
 				Vector3f lightDir = wo;
@@ -262,12 +262,18 @@ Vector3f Material::eval(const Vector3f &wi, const Vector3f &wo, const Vector3f &
 
 				fresnel(Point2View, N, refractive, F);
 
-				float crossWiWo = 4 * dotProduct(normalize(wi), normalize(N)) * dotProduct(normalize(wo), normalize(N));
+				float crossWiWo = 4 * fmaxf(dotProduct(wi, N), 0) * fmaxf(dotProduct(wo, N), 0);
 
 				float f_diffuse = 1.0f / M_PI;
-				float f_cook_torrance = D * F * G / (crossWiWo);
+				float f_cook_torrance = D * F * G / (std::max(crossWiWo, 0.001f));
 
-				return Kd * f_diffuse + Ks * f_cook_torrance;
+				auto returnVal = Kd * f_diffuse + (1 - F) * Ks * f_cook_torrance; 
+
+				//printf("Kd.x = %f, Kd.y = %f, Kd.z = %f\n", Kd.x, Kd.y, Kd.z);
+				//printf("Ks.x = %f, Ks.y = %f, Ks.z = %f\n", Ks.x, Ks.y, Ks.z);
+				//printf("test.x = %f, test.y = %f, test.z = %f\n", returnVal.x, returnVal.y, returnVal.z);
+
+				return returnVal;
 			}
 			else
 				return Vector3f(0.0f);
