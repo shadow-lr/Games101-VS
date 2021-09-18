@@ -7,7 +7,7 @@
 
 #include "Vector.hpp"
 
-enum MaterialType { DIFFUSE, Microfacet};
+enum MaterialType { DIFFUSE, Microfacet, MicrofacetGlossy};
 
 class Material{
 private:
@@ -173,70 +173,83 @@ Vector3f Material::getColorAt(double u, double v) {
 Vector3f Material::sample(const Vector3f& wi, const Vector3f& N)
 {
 	switch (m_type)
-    {
-        // 对漫反射材质采样与入射光线无关
-	    case DIFFUSE:
-	    {
-			// uniform sample on the hemisphere
-			float x_1 = get_random_float(), x_2 = get_random_float();
-			// z belongs to [-1, 1]
-			float z = std::fabs(1.0f - 2.0f * x_1);
-			// r belongs to [0, 1]
-			// phi 半球的立体角是2pi
-			float r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
-			// 均匀平滑r的分布 [0, 1]
-			// 采样大小和方向
-			Vector3f localRay(r * std::cos(phi), r * std::sin(phi), z);
+	{
+		// 对漫反射材质采样与入射光线无关
+	case DIFFUSE:
+	{
+		// uniform sample on the hemisphere
+		float x_1 = get_random_float(), x_2 = get_random_float();
+		// z belongs to [-1, 1]
+		float z = std::fabs(1.0f - 2.0f * x_1);
+		// r belongs to [0, 1]
+		// phi 半球的立体角是2pi
+		float r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
+		// 均匀平滑r的分布 [0, 1]
+		// 采样大小和方向
+		Vector3f localRay(r * std::cos(phi), r * std::sin(phi), z);
 
-			//float r_1 = get_random_float(), r_2 = get_random_float();
-			//float x = std::cos(2 * M_PI * r_1) * 2 * std::sqrt(r_2 * (1 - r_2));
-			//float y = std::sin(2 * M_PI * r_1) * 2 * std::sqrt(r_2 * (1 - r_2));
-			//float z = 1 - 2 * r_2;
+		//float r_1 = get_random_float(), r_2 = get_random_float();
+		//float x = std::cos(2 * M_PI * r_1) * 2 * std::sqrt(r_2 * (1 - r_2));
+		//float y = std::sin(2 * M_PI * r_1) * 2 * std::sqrt(r_2 * (1 - r_2));
+		//float z = 1 - 2 * r_2;
 
-			//Vector3f localRay(x, y, z);
-		    return toWorld(localRay, N);
-            
-		    break;
-	    }
-        case Microfacet:
-        {
-			// uniform sample on the hemisphere
-			float x_1 = get_random_float(), x_2 = get_random_float();
-			// z belongs to [-1, 1]
-			float z = std::fabs(1.0f - 2.0f * x_1);
-			// r belongs to [0, 1]
-			// phi 半球的立体角是2pi
-			float r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
-			// 均匀平滑r的分布 [0, 1]
-			// 采样大小和方向
-			Vector3f localRay(r * std::cos(phi), r * std::sin(phi), z);
-			return toWorld(localRay, N);
+		//Vector3f localRay(x, y, z);
+		return toWorld(localRay, N);
 
-			break;
-        }
+		break;
+	}
+	case Microfacet:
+	{
+		// uniform sample on the hemisphere
+		float x_1 = get_random_float(), x_2 = get_random_float();
+		float z = std::fabs(1.0f - 2.0f * x_1);
+		float r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
+		Vector3f localRay(r * std::cos(phi), r * std::sin(phi), z);
+		return toWorld(localRay, N);
+
+		break;
+	}
+	case MicrofacetGlossy:
+	{
+		// uniform sample on the hemisphere
+		float x_1 = get_random_float(), x_2 = get_random_float();
+		float z = std::fabs(1.0f - 2.0f * x_1);
+		float r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
+		Vector3f localRay(r * std::cos(phi), r * std::sin(phi), z);
+		return toWorld(localRay, N);
+		break;
+	}
 	}
 }
 
-float Material::pdf(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
-    switch(m_type){
-        case DIFFUSE:
-        {
-            // uniform sample probability 1 / (2 * PI)
-            if (dotProduct(wo, N) > -EPSILON)
-                return 0.5f / M_PI;
-            else
-                return 0.0f;
-            break;
-        }
-        case Microfacet:
-        {
-            if (dotProduct(wo, N) > -EPSILON)
-                return 0.5f / M_PI;
-            else
-                return 0.0f;
-            break;
-        }
-    }
+float Material::pdf(const Vector3f& wi, const Vector3f& wo, const Vector3f& N) {
+	switch (m_type) {
+	case DIFFUSE:
+	{
+		// uniform sample probability 1 / (2 * PI)
+		if (dotProduct(wo, N) > -EPSILON)
+			return 0.5f / M_PI;
+		else
+			return 0.0f;
+		break;
+	}
+	case Microfacet:
+	{
+		if (dotProduct(wo, N) > -EPSILON)
+			return 0.5f / M_PI;
+		else
+			return 0.0f;
+		break;
+	}
+	case MicrofacetGlossy:
+	{
+		if (dotProduct(wo, N) > -EPSILON)
+			return 0.5f / M_PI;
+		else
+			return 0.0f;
+		break;
+	}
+	}
 }
 
 /// <param name="wi">入射</param>
@@ -261,7 +274,7 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 	{
 		float cosalpha = dotProduct(N, wo);
 		if (cosalpha > -EPSILON) {
-			float roughness = 0.5f;
+			float roughness = 0.06f;
 			float refractive = 1.85f;
 
 			Vector3f View2Point = -wi;
@@ -278,7 +291,7 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 			//Vector3f F0(0.95f, 0.93f, 0.88f);
 			//Vector3f vec_fresnel = fresnelSchilck(N, View2Point, F0);
 
-			float crossWiWo = 4 * fmaxf(dotProduct(View2Point, N), 0.0f) * dotProduct(lightDir, N);
+			float crossWiWo = 4 * fmaxf(dotProduct(View2Point, N), 0.0f) * fmaxf(dotProduct(lightDir, N), 0.0f);
 
 			float f_diffuse = 1.0f / M_PI;
 			float f_cook_torrance = D * F * G / (std::max(crossWiWo, 0.001f));
@@ -287,9 +300,26 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 			//Vector3f KD = Vector3f(1.0f) - Ks;
 			//Vector3f KD = Vector3f(1.0f) - vec_fresnel;
 
-			auto returnVal = (1 - F) * Kd * f_diffuse + Ks * f_cook_torrance;
+			return (1.0f - F) * Kd * f_diffuse + Ks * f_cook_torrance;
+		}
+		else
+			return Vector3f(0.0f);
+		break;
+	}
+	case MicrofacetGlossy:
+	{
+		float cosalpha = dotProduct(N, wo);
+		if (cosalpha > -EPSILON) {
+			// Blinn-Phong
+			Vector3f View2Point = -wo;
+			Vector3f lightDir = wi;
 
-			return returnVal;
+			Vector3f half_vector = (View2Point + lightDir).normalized();
+			float nDotHalf = fmaxf(dotProduct(N, half_vector), 0.0f);
+
+			int p = 12;
+
+			return Kd / M_PI + Ks * powf(nDotHalf, p);
 		}
 		else
 			return Vector3f(0.0f);

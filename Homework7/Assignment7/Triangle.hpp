@@ -89,14 +89,30 @@ public:
 class MeshTriangle : public Object
 {
 public:
-    MeshTriangle(const std::string& filename, Material *mt = new Material(), BVHAccel::SplitMethod splitMethod = BVHAccel::SplitMethod::NAIVE)
-    {
-        objl::Loader loader;
-        loader.LoadFile(filename);
-        area = 0;
-        m = mt;
-        assert(loader.LoadedMeshes.size() == 1);
+	MeshTriangle(const std::string& filename, Material* mt = new Material(), BVHAccel::SplitMethod splitMethod = BVHAccel::SplitMethod::NAIVE,
+		std::array<float, 3> translate = { 0.0f }, std::array<float, 3> scale = { 1.0f,1.0f,1.0f })
+	{
+		objl::Loader loader;
+		loader.LoadFile(filename);
+		area = 0;
+		m = mt;
+		assert(loader.LoadedMeshes.size() == 1);
         auto mesh = loader.LoadedMeshes[0];
+
+        // model
+        /*  scale_x 0       0       x
+            0       scale_y 0       y
+            0       0       scale_z z
+            0       0       0       1
+        */
+        std::array<float, 12> model;
+        model[0] = scale[0];
+        model[5] = scale[1];
+        model[10] = scale[2];
+
+        model[3] = translate[0];
+        model[7] = translate[1];
+        model[11] = translate[2];
 
         Vector3f min_vert = Vector3f{std::numeric_limits<float>::infinity(),
                                      std::numeric_limits<float>::infinity(),
@@ -111,6 +127,15 @@ public:
                 auto vert = Vector3f(mesh.Vertices[i + j].Position.X,
                                      mesh.Vertices[i + j].Position.Y,
                                      mesh.Vertices[i + j].Position.Z);
+
+                vert.x *= model[0];
+                vert.y *= model[5];
+                vert.z *= model[10];
+
+                vert.x += model[3];
+                vert.y += model[7];
+                vert.z += model[11];
+
                 face_vertices[j] = vert;
 
                 min_vert = Vector3f(std::min(min_vert.x, vert.x),
