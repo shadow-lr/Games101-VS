@@ -69,7 +69,7 @@ private:
         // kt = 1 - kr;
     }
 
-	float GeometryFunction(const Vector3f& normal, const Vector3f& view2Point, const Vector3f& lightDir, float roughness) const
+	float GeometryFunction(const Vector3f& normal, const Vector3f& view2Point, const Vector3f& lightDir, const float& roughness) const
 	{
 		// GGX Schilick-Beckmann
 		// include Geometry Obstruction and Geometry Shadowing
@@ -77,7 +77,7 @@ private:
 
 		// G(n, v, l, k) = Gsub(n, v, k)Gsub(n, l, k)
 		// kdirect = (a + 1) * (a + 1) / 8
-		float k = pow(roughness + 1, 2) / 8.0f;
+		float k = pow(roughness + 1.0f, 2) / 8.0f;
 
 		float ggx1 = GeometryFunctionCalculate(normal, view2Point, k);
 		float ggx2 = GeometryFunctionCalculate(normal, lightDir, k);
@@ -87,19 +87,19 @@ private:
 
 	float GeometryFunctionCalculate(const Vector3f& normal, const Vector3f& temp, float k) const
 	{
-		float nDotTemp = dotProduct(normal, temp);
-		float nDotTempDotK = nDotTemp * (1 - k) + k;
+		float nDotTemp = fmaxf(dotProduct(normal, temp), 0.0f);
+		float nDotTempDotK = nDotTemp * (1.0f - k) + k;
 		return nDotTemp / nDotTempDotK;
 	}
 
-	float NormalDistributionFunction(const Vector3f& normal, const Vector3f& half_vector, float& roughness) const
+	float NormalDistributionFunction(const Vector3f& normal, const Vector3f& half_vector, const float& roughness) const
 	{
 		// set : x = (n · h) * (n · h) * (a * a - 1) + 1
         // NDF = a * a / (M_PI * x * x)
         float a2 = roughness * roughness;
-        float nDotH2 = pow(dotProduct(normal, half_vector), 2);
-        float denom = M_PI * pow(nDotH2 * (a2 - 1) + 1, 2);
-        return denom;
+        float nDotH2 = pow(fmaxf(dotProduct(normal, half_vector), 0.0f), 2);
+        float denom = M_PI * pow(nDotH2 * (a2 - 1.0f) + 1.0f, 2);
+        return a2 / denom;
 	}
 
 	Vector3f toWorld(const Vector3f& a, const Vector3f& N) {
@@ -146,12 +146,12 @@ Material::Material(MaterialType t, Vector3f e) {
 	m_emission = e;
 }
 
-MaterialType Material::getType(){return m_type;}
+MaterialType Material::getType() { return m_type; }
 ///Vector3f Material::getColor(){return m_color;}
-Vector3f Material::getEmission() {return m_emission;}
+Vector3f Material::getEmission() { return m_emission; }
 bool Material::hasEmission() {
-    if (m_emission.norm() > EPSILON) return true;
-    else return false;
+	if (m_emission.norm() > EPSILON) return true;
+	else return false;
 }
 
 Vector3f Material::getColorAt(double u, double v) {
@@ -159,7 +159,7 @@ Vector3f Material::getColorAt(double u, double v) {
 }
 
 /// <summary>
-/// 给定入射光线和法线，采样一个出射光线
+/// 根据法线，采样一个出射光线，并转换到世界坐标系下
 /// </summary>
 /// <param name="wi"></param>
 /// <param name="N"></param>
@@ -171,16 +171,23 @@ Vector3f Material::sample(const Vector3f& wi, const Vector3f& N)
         // 对漫反射材质采样与入射光线无关
 	    case DIFFUSE:
 	    {
-		    // uniform sample on the hemisphere
-		    float x_1 = get_random_float(), x_2 = get_random_float();
-		    // z belongs to [-1, 1]
-		    float z = std::fabs(1.0f - 2.0f * x_1);
-		    // r belongs to [0, 1]
-		    // phi 半球的立体角是2pi
-		    float r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
-            // 均匀平滑r的分布 [0, 1]
-            // 采样大小和方向
-		    Vector3f localRay(r * std::cos(phi), r * std::sin(phi), z);
+			// uniform sample on the hemisphere
+			float x_1 = get_random_float(), x_2 = get_random_float();
+			// z belongs to [-1, 1]
+			float z = std::fabs(1.0f - 2.0f * x_1);
+			// r belongs to [0, 1]
+			// phi 半球的立体角是2pi
+			float r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
+			// 均匀平滑r的分布 [0, 1]
+			// 采样大小和方向
+			Vector3f localRay(r * std::cos(phi), r * std::sin(phi), z);
+
+			//float r_1 = get_random_float(), r_2 = get_random_float();
+			//float x = std::cos(2 * M_PI * r_1) * 2 * std::sqrt(r_2 * (1 - r_2));
+			//float y = std::sin(2 * M_PI * r_1) * 2 * std::sqrt(r_2 * (1 - r_2));
+			//float z = 1 - 2 * r_2;
+
+			//Vector3f localRay(x, y, z);
 		    return toWorld(localRay, N);
             
 		    break;
@@ -230,55 +237,58 @@ float Material::pdf(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
 /// <param name="wo">出射</param>
 /// <param name="N">法向量</param>
 /// <returns>return diffuse; Vector3f diffuse = Kd / M_PI;</returns>
-Vector3f Material::eval(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
-    switch(m_type){
-        case DIFFUSE:
-        {
-            // calculate the contribution of diffuse   model
-            float cosalpha = dotProduct(N, wo);
-            if (cosalpha > -EPSILON) {
-                Vector3f diffuse = Kd / M_PI;
-                return diffuse;
-            }
-            else
-                return Vector3f(0.0f);
-            break;
+Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& N) {
+	switch (m_type) {
+	case DIFFUSE:
+	{
+		// calculate the contribution of diffuse   model
+		float cosalpha = dotProduct(N, wo);
+		if (cosalpha > -EPSILON) {
+			Vector3f diffuse = Kd / M_PI;
+			return diffuse;
 		}
-		case Microfacet:
-		{
-			float cosalpha = dotProduct(N, wo);
-			if (cosalpha > -EPSILON) {
-				float roughness = 0.8;
-				float refractive = 1.25;
+		else
+			return Vector3f(0.0f);
+		break;
+	}
+	case Microfacet:
+	{
+		float cosalpha = dotProduct(N, wo);
+		if (cosalpha > -EPSILON) {
+			float roughness = 0.35f;
+			float refractive = 1.85f;
 
-				Vector3f Point2View = -wi;
-				Vector3f lightDir = wo;
+			Vector3f View2Point = -wi;
+			Vector3f lightDir = wo;
 
-				Vector3f half_vector = (Point2View + lightDir).normalized();
+			Vector3f half_vector = (View2Point + lightDir).normalized();
 
-				float D = NormalDistributionFunction(N, half_vector, roughness);
-				float F;
-				float G = GeometryFunction(N, Point2View, lightDir, roughness);
+			float D = NormalDistributionFunction(N, half_vector, roughness);
+			float F;
+			float G = GeometryFunction(N, View2Point, lightDir, roughness);
 
-				fresnel(Point2View, N, refractive, F);
+			fresnel(View2Point, N, refractive, F);
 
-				float crossWiWo = 4 * fmaxf(dotProduct(wi, N), 0) * fmaxf(dotProduct(wo, N), 0);
+			float crossWiWo = 4 * fmaxf(dotProduct(View2Point, N), 0.0f) * dotProduct(lightDir, N);
 
-				float f_diffuse = 1.0f / M_PI;
-				float f_cook_torrance = D * F * G / (std::max(crossWiWo, 0.001f));
+			float f_diffuse = 1.0f / M_PI;
+			float f_cook_torrance = D * F * G / (std::max(crossWiWo, 0.001f));
 
-				auto returnVal = Kd * f_diffuse + (1 - F) * Ks * f_cook_torrance; 
+			// enery conservation
+			Vector3f KD = Vector3f(1, 1, 1) - Ks;
 
-				//printf("Kd.x = %f, Kd.y = %f, Kd.z = %f\n", Kd.x, Kd.y, Kd.z);
-				//printf("Ks.x = %f, Ks.y = %f, Ks.z = %f\n", Ks.x, Ks.y, Ks.z);
-				//printf("test.x = %f, test.y = %f, test.z = %f\n", returnVal.x, returnVal.y, returnVal.z);
+			auto returnVal = (1 - F) * Kd * f_diffuse + Ks * f_cook_torrance;
 
-				return returnVal;
-			}
-			else
-				return Vector3f(0.0f);
-			break;
+			//printf("Kd.x = %f, Kd.y = %f, Kd.z = %f\n", Kd.x, Kd.y, Kd.z);
+			//printf("Ks.x = %f, Ks.y = %f, Ks.z = %f\n", Ks.x, Ks.y, Ks.z);
+			//printf("test.x = %f, test.y = %f, test.z = %f\n", returnVal.x, returnVal.y, returnVal.z);
+
+			return returnVal;
 		}
+		else
+			return Vector3f(0.0f);
+		break;
+	}
 	}
 }
 

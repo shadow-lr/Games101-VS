@@ -57,7 +57,7 @@ public:
 		if (t0 < 0) t0 = t1;
 		if (t0 < 0) return result;
 
-		if (t0 > 0.2)
+		if (t0 > 0.5)
 		{
 			result.happened = true;
 			result.coords = Vector3f(ray.origin + ray.direction * t0);
@@ -95,11 +95,11 @@ public:
 		pdf = 1.0f / area;
 	}
 
-	float getArea() {
+	float getArea() override {
 		return area;
 	}
 
-	bool hasEmit() {
+	bool hasEmit() override {
 		return m->hasEmission();
 	}
 };

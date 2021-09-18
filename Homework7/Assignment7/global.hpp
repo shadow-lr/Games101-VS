@@ -7,7 +7,7 @@
 #undef M_PI
 #define M_PI 3.141592653589793f
 
-const int thread_num = 32;
+const int thread_num = 8;
 
 static int thread_finish_count[thread_num + 1]{ 0 };
 
@@ -28,11 +28,11 @@ inline  bool solveQuadratic(const float& a, const float& b, const float& c, floa
 	else if (discr == 0) x0 = x1 = -0.5 * b / a;
 	else
 	{
-		float q = (b > 0) ? -0.5 * (b + sqrt(discr)) : -0.5 * (b - sqrt(discr));
+		float q = (b >= -EPSILON) ? -0.5 * (b + sqrt(discr)) : -0.5 * (b - sqrt(discr));
 		x0 = q / a;
 		x1 = c / q;
 	}
-	if (x0 > x1) std::swap(x0, x1);
+	if (x0 - x1 >= -EPSILON) std::swap(x0, x1);
 	return true;
 }
 
@@ -81,7 +81,7 @@ inline void UpdateAllProgress(float progress, int finish_num, int all_num, int p
 				else printf(" ");
 			}
 
-			printf("%-3.1f%%]", (fminf(curThreadProgress * 100.0, 100.0));
+			printf("%-3.1f%%]", (fminf(curThreadProgress * 100.0, 100.0)));
             printf("\t");
 		}
         printf("\nAll  [");
