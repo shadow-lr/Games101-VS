@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 {
 	// Change the definition here to change resolution
 	omp_init_lock(&lock);
-	Scene scene(1024, 1024);
+	Scene scene(200, 200);
 
 	// Vector3f(0.0f)是否是自发光
 	Material* red = new Material(DIFFUSE, Vector3f(0.0f));
@@ -32,6 +32,10 @@ int main(int argc, char** argv)
 	glass->Kd = Vector3f(0.3f, 0.3f, 0.25f);
 	glass->Ks = Vector3f(0.45f, 0.45f, 0.45f);
 
+	Material* silver = new Material(Microfacet, Vector3f(0.0f));
+	silver->Kd = Vector3f(1.0f, 0.5f, 0.31f);
+	silver->Ks = Vector3f(0.5f, 0.5f, 0.5f);
+
 	BVHAccel::SplitMethod splitMethod = BVHAccel::SplitMethod::NAIVE;
 
 	MeshTriangle floor("./Homework7/Assignment7/models/cornellbox/floor.obj", white, splitMethod);
@@ -42,14 +46,16 @@ int main(int argc, char** argv)
 	MeshTriangle light_("./Homework7/Assignment7/models/cornellbox/light.obj", light, splitMethod);
 
 	Sphere sphere(Vector3f(150.0f, 100.0f, 300.0f), 100, glass);
+	Sphere sphere1(Vector3f(350.0f, 100.0f, 200.0f), 100, silver);
 
 	scene.Add(&floor);
 	//scene.Add(&shortbox);
-	scene.Add(&tallbox);
+	//scene.Add(&tallbox);
 	scene.Add(&left);
 	scene.Add(&right);
 	scene.Add(&light_);
 	scene.Add(&sphere);
+	scene.Add(&sphere1);
 
 	scene.build(splitMethod);
 

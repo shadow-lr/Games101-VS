@@ -69,6 +69,12 @@ private:
         // kt = 1 - kr;
     }
 
+	Vector3f fresnelSchilck(const Vector3f& normal, const Vector3f& View2Point, const Vector3f& F0)
+	{
+		Vector3f one = Vector3f(1.0f);
+		return F0 + (one - F0) * powf(1.0 - fmaxf(dotProduct(normal, View2Point), 0.0f), 5.0);
+	}
+
 	float GeometryFunction(const Vector3f& normal, const Vector3f& view2Point, const Vector3f& lightDir, const float& roughness) const
 	{
 		// GGX Schilick-Beckmann
@@ -77,7 +83,7 @@ private:
 
 		// G(n, v, l, k) = Gsub(n, v, k)Gsub(n, l, k)
 		// kdirect = (a + 1) * (a + 1) / 8
-		float k = pow(roughness + 1.0f, 2) / 8.0f;
+		float k = pow(roughness + 1.0f, 2.0f) / 8.0f;
 
 		float ggx1 = GeometryFunctionCalculate(normal, view2Point, k);
 		float ggx2 = GeometryFunctionCalculate(normal, lightDir, k);
@@ -97,7 +103,7 @@ private:
 		// set : x = (n ¡¤ h) * (n ¡¤ h) * (a * a - 1) + 1
         // NDF = a * a / (M_PI * x * x)
         float a2 = roughness * roughness;
-        float nDotH2 = pow(fmaxf(dotProduct(normal, half_vector), 0.0f), 2);
+        float nDotH2 = pow(fmaxf(dotProduct(normal, half_vector), 0.0f), 2.0f);
         float denom = M_PI * pow(nDotH2 * (a2 - 1.0f) + 1.0f, 2);
         return a2 / denom;
 	}
@@ -255,7 +261,7 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 	{
 		float cosalpha = dotProduct(N, wo);
 		if (cosalpha > -EPSILON) {
-			float roughness = 0.35f;
+			float roughness = 0.5f;
 			float refractive = 1.85f;
 
 			Vector3f View2Point = -wi;
@@ -267,7 +273,10 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 			float F;
 			float G = GeometryFunction(N, View2Point, lightDir, roughness);
 
-			fresnel(View2Point, N, refractive, F);
+			// Tips:wi
+			fresnel(wi, N, refractive, F);
+			//Vector3f F0(0.95f, 0.93f, 0.88f);
+			//Vector3f vec_fresnel = fresnelSchilck(N, View2Point, F0);
 
 			float crossWiWo = 4 * fmaxf(dotProduct(View2Point, N), 0.0f) * dotProduct(lightDir, N);
 
@@ -275,13 +284,10 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 			float f_cook_torrance = D * F * G / (std::max(crossWiWo, 0.001f));
 
 			// enery conservation
-			Vector3f KD = Vector3f(1, 1, 1) - Ks;
+			//Vector3f KD = Vector3f(1.0f) - Ks;
+			//Vector3f KD = Vector3f(1.0f) - vec_fresnel;
 
 			auto returnVal = (1 - F) * Kd * f_diffuse + Ks * f_cook_torrance;
-
-			//printf("Kd.x = %f, Kd.y = %f, Kd.z = %f\n", Kd.x, Kd.y, Kd.z);
-			//printf("Ks.x = %f, Ks.y = %f, Ks.z = %f\n", Ks.x, Ks.y, Ks.z);
-			//printf("test.x = %f, test.y = %f, test.z = %f\n", returnVal.x, returnVal.y, returnVal.z);
 
 			return returnVal;
 		}
