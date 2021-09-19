@@ -126,6 +126,7 @@ public:
 	MaterialType m_type;
 	//Vector3f m_color;
 	Vector3f m_emission;
+	float roughness;
 	float ior;
 	Vector3f Kd, Ks;
 	float specularExponent;
@@ -274,8 +275,8 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 	{
 		float cosalpha = dotProduct(N, wo);
 		if (cosalpha > -EPSILON) {
-			float roughness = 0.06f;
-			float refractive = 1.85f;
+			float roughness = 0.1f;
+			//float refractive = 1.85f;
 
 			Vector3f View2Point = -wi;
 			Vector3f lightDir = wo;
@@ -284,10 +285,10 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 
 			float D = NormalDistributionFunction(N, half_vector, roughness);
 			float F;
-			float G = GeometryFunction(N, View2Point, lightDir, roughness);
+			float G = GeometryFunction(N, View2Point, lightDir, roughness); 
 
 			// Tips:wi
-			fresnel(wi, N, refractive, F);
+			fresnel(wi, N, ior, F);
 			//Vector3f F0(0.95f, 0.93f, 0.88f);
 			//Vector3f vec_fresnel = fresnelSchilck(N, View2Point, F0);
 
@@ -297,10 +298,10 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 			float f_cook_torrance = D * F * G / (std::max(crossWiWo, 0.001f));
 
 			// enery conservation
-			//Vector3f KD = Vector3f(1.0f) - Ks;
+			Vector3f Ks = Vector3f(1.0f) - Kd;
 			//Vector3f KD = Vector3f(1.0f) - vec_fresnel;
 
-			return (1.0f - F) * Kd * f_diffuse + Ks * f_cook_torrance;
+			return Kd * f_diffuse + Ks * f_cook_torrance;
 		}
 		else
 			return Vector3f(0.0f);

@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 {
 	// Change the definition here to change resolution
 	omp_init_lock(&lock);
-	Scene scene(1024, 1024);
+	Scene scene(200, 200);
 
 	// Vector3f(0.0f)是否是自发光
 	Material* red = new Material(DIFFUSE, Vector3f(0.0f));
@@ -29,8 +29,9 @@ int main(int argc, char** argv)
 	light->Kd = Vector3f(0.65f);
 
 	Material* glass = new Material(Microfacet, Vector3f(0.0f));
-	glass->Kd = Vector3f(0.3f, 0.3f, 0.25f);
-	glass->Ks = Vector3f(0.8f, 0.8f, 0.8f);
+	glass->Kd = Vector3f(0.3f, 0.3f, 0.3f);
+	glass->roughness = 0.0f;
+	glass->ior = 20.0f;
 
 	Material* silver = new Material(MicrofacetGlossy, Vector3f(0.0f));
 	silver->Kd = Vector3f(1.0f, 0.5f, 0.31f);
@@ -40,7 +41,7 @@ int main(int argc, char** argv)
 
 	MeshTriangle floor("./Homework7/Assignment7/models/cornellbox/floor.obj", white, splitMethod);
 	//MeshTriangle shortbox("./Homework7/Assignment7/models/cornellbox/shortbox.obj", white, splitMethod);
-	MeshTriangle tallbox("./Homework7/Assignment7/models/cornellbox/tallbox.obj", white, splitMethod);
+	MeshTriangle tallbox("./Homework7/Assignment7/models/cornellbox/tallbox.obj", glass, splitMethod);
 	MeshTriangle left("./Homework7/Assignment7/models/cornellbox/left.obj", red, splitMethod);
 	MeshTriangle right("./Homework7/Assignment7/models/cornellbox/right.obj", green, splitMethod);
 	MeshTriangle light_("./Homework7/Assignment7/models/cornellbox/light.obj", light, splitMethod);
@@ -50,16 +51,16 @@ int main(int argc, char** argv)
 	MeshTriangle bunny("./Homework7/Assignment7/models/bunny/bunny.obj", white, splitMethod, translate, scale);
 
 	Sphere sphere(Vector3f(150.0f, 100.0f, 300.0f), 100, glass);
-	Sphere sphere1(Vector3f(350.0f, 100.0f, 400.0f), 100, silver);
+	//Sphere sphere1(Vector3f(350.0f, 100.0f, 400.0f), 100, silver);
 
 	scene.Add(&floor);
 	//scene.Add(&shortbox);
-	//scene.Add(&tallbox);
+	scene.Add(&tallbox);
 	scene.Add(&left);
 	scene.Add(&right);
 	scene.Add(&light_);
 	scene.Add(&sphere);
-	scene.Add(&sphere1);
+	//scene.Add(&sphere1);
 	scene.Add(&bunny);
 
 	scene.build(splitMethod);

@@ -36,6 +36,8 @@ void Renderer::Render(const Scene& scene)
 
     auto clock_start = std::chrono::system_clock::now();
 
+    bool bOpenMSAA = false;
+
     int msaa_sample = 2;
     int mass_sample2 = msaa_sample * msaa_sample;
 
@@ -52,23 +54,38 @@ void Renderer::Render(const Scene& scene)
 #pragma omp for
 		for (int j = 0; j < scene.height; ++j) {
 			for (int i = 0; i < scene.width; ++i) {
-                int write_index = j * scene.width + i;
-                for (int a = 0; a < msaa_sample; ++a){
-                    for (int b = 0; b < msaa_sample; ++b) {
-                        // generate primary ray direction
-                        float x = (2 * (i + offset[a]) / (float)scene.width - 1) * imageAspectRatio * scale;
-                        float y = (1 - 2 * (j + offset[b]) / (float)scene.height) * scale;
+				int write_index = j * scene.width + i;
+				if (bOpenMSAA)
+				{
+					for (int a = 0; a < msaa_sample; ++a) {
+						for (int b = 0; b < msaa_sample; ++b) {
+							// generate primary ray direction
+							float x = (2 * (i + offset[a]) / (float)scene.width - 1) * imageAspectRatio * scale;
+							float y = (1 - 2 * (j + offset[b]) / (float)scene.height) * scale;
 
-                        Vector3f dir = normalize(Vector3f(-x, y, 1));
+							Vector3f dir = normalize(Vector3f(-x, y, 1));
 
 
-                        for (int k = 0; k < spp; k++)
-                        {
-                            framebuffer[write_index] += scene.castRay(Ray(eye_pos, dir), 0) / spp;
-                        }
+							for (int k = 0; k < spp; k++)
+							{
+								framebuffer[write_index] += scene.castRay(Ray(eye_pos, dir), 0) / spp;
+							}
+						}
+					}
+                    framebuffer[write_index] = framebuffer[write_index] / mass_sample2;
+				}
+                else
+                {
+                    float x = (2 * (i + 0.5) / (float)scene.width - 1) * imageAspectRatio * scale;
+                    float y = (1 - 2 * (j + 0.5) / (float)scene.height) * scale;
+
+                    Vector3f dir = normalize(Vector3f(-x, y, 1));
+
+                    for (int k = 0; k < spp; k++)
+                    {
+                        framebuffer[write_index] += scene.castRay(Ray(eye_pos, dir), 0) / spp;
                     }
                 }
-                framebuffer[write_index] = framebuffer[write_index] / mass_sample2;
 				
 #pragma omp critical
 				finish_num += 1;
@@ -87,26 +104,8 @@ void Renderer::Render(const Scene& scene)
 	}
     UpdateProgress(1.f);
 
-    // SSAA
-    /*int ssaa_sample = 4;
-    float sampling_period = 1 / ssaa_sample;
-
-    for (int x = 0; x <= scene.height; ++x){
-        for (int y = 0; y < scene.width; ++y) {
-            Vector3f color_sum{ 0,0,0 };
-            for (int i = 0; i < ssaa_sample; ++i) {
-                for (int j = 0; j < ssaa_sample; ++j) {
-                    int new_x = x + i * sampling_period;
-                    int new_y = y + j * sampling_period;
-                    
-                    color_sum += framebuffer[]
-                }
-            }
-        }
-    }*/
-
     // save framebuffer to file
-    FILE* fp = fopen("binary_pt_Microfacet_Blinn_MSAA.ppm", "wb");
+    FILE* fp = fopen("binary_pt_CookTorrance_Glass.ppm", "wb");
     (void)fprintf(fp, "P6\n%d %d\n255\n", scene.width, scene.height);
     for (auto i = 0; i < scene.height * scene.width; ++i) {
         static unsigned char color[3];
