@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 {
 	// Change the definition here to change resolution
 	omp_init_lock(&lock);
-	Scene scene(1024, 1024);
+	Scene scene(400, 400);
 
 	// Vector3f(0.0f)是否是自发光
 	Material* red = new Material(DIFFUSE, Vector3f(0.0f));
@@ -30,18 +30,21 @@ int main(int argc, char** argv)
 
 	Material* glass = new Material(Microfacet, Vector3f(0.0f));
 	glass->Kd = Vector3f(0.3f, 0.3f, 0.3f);
-	glass->roughness = 0.0f;
-	glass->ior = 20.0f;
+	glass->Ks = Vector3f(0.8f, 0.8f, 0.8f);
+	glass->roughness = 0.06f;
+	glass->ior = 1.85f;
 
 	Material* silver = new Material(MicrofacetGlossy, Vector3f(0.0f));
-	silver->Kd = Vector3f(1.0f, 0.5f, 0.31f);
 	silver->Ks = Vector3f(0.6f, 0.6f, 0.6f);
+	silver->Kd = Vector3f(0.6f, 0.6f, 0.6f);
+	silver->roughness = 0.06f;
+	silver->ior = 20.0f;
 
 	BVHAccel::SplitMethod splitMethod = BVHAccel::SplitMethod::NAIVE;
 
 	MeshTriangle floor("./Homework7/Assignment7/models/cornellbox/floor.obj", white, splitMethod);
 	//MeshTriangle shortbox("./Homework7/Assignment7/models/cornellbox/shortbox.obj", white, splitMethod);
-	MeshTriangle tallbox("./Homework7/Assignment7/models/cornellbox/tallbox.obj", glass, splitMethod);
+	MeshTriangle tallbox("./Homework7/Assignment7/models/cornellbox/tallbox.obj", silver, splitMethod);
 	MeshTriangle left("./Homework7/Assignment7/models/cornellbox/left.obj", red, splitMethod);
 	MeshTriangle right("./Homework7/Assignment7/models/cornellbox/right.obj", green, splitMethod);
 	MeshTriangle light_("./Homework7/Assignment7/models/cornellbox/light.obj", light, splitMethod);

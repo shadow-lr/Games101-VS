@@ -24,7 +24,7 @@ void Renderer::Render(const Scene& scene)
     //int m = 0;
 
     // change the spp value to change sample ammount
-    int spp = 800;
+    int spp = 500;
     std::cout << "SPP: " << spp << "\n";
 
     int finish_num = 0;
@@ -105,7 +105,7 @@ void Renderer::Render(const Scene& scene)
     UpdateProgress(1.f);
 
     // save framebuffer to file
-    FILE* fp = fopen("binary_pt_CookTorrance_Glass.ppm", "wb");
+    FILE* fp = fopen("binary_pt_CookTorrance_Glass2.ppm", "wb");
     (void)fprintf(fp, "P6\n%d %d\n255\n", scene.width, scene.height);
     for (auto i = 0; i < scene.height * scene.width; ++i) {
         static unsigned char color[3];

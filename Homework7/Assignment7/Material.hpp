@@ -275,7 +275,7 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 	{
 		float cosalpha = dotProduct(N, wo);
 		if (cosalpha > -EPSILON) {
-			float roughness = 0.1f;
+			//float roughness = 0.1f;
 			//float refractive = 1.85f;
 
 			Vector3f View2Point = -wi;
@@ -298,10 +298,11 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 			float f_cook_torrance = D * F * G / (std::max(crossWiWo, 0.001f));
 
 			// enery conservation
-			Vector3f Ks = Vector3f(1.0f) - Kd;
+			//Vector3f Ks = Vector3f(F);
+			//Vector3f Ks = Vector3f(1.0f) - Kd;
 			//Vector3f KD = Vector3f(1.0f) - vec_fresnel;
 
-			return Kd * f_diffuse + Ks * f_cook_torrance;
+			return (1.0f - F) * Kd * f_diffuse + Ks * f_cook_torrance;
 		}
 		else
 			return Vector3f(0.0f);
