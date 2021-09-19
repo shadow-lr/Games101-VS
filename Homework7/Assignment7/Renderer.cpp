@@ -24,7 +24,7 @@ void Renderer::Render(const Scene& scene)
     //int m = 0;
 
     // change the spp value to change sample ammount
-    int spp = 800;
+    int spp = 200;
     std::cout << "SPP: " << spp << "\n";
 
     int finish_num = 0;
@@ -36,24 +36,40 @@ void Renderer::Render(const Scene& scene)
 
     auto clock_start = std::chrono::system_clock::now();
 
+    int msaa_sample = 2;
+    int mass_sample2 = msaa_sample * msaa_sample;
+
+    std::vector<float> offset;
+
+    for (int i = 0; i < msaa_sample; ++i)
+    {
+        offset.push_back((0.5 + i) * 1.0 / static_cast<float>(msaa_sample));
+    }
+
     omp_set_num_threads(thread_num);
 #pragma omp parallel
     {
 #pragma omp for
 		for (int j = 0; j < scene.height; ++j) {
 			for (int i = 0; i < scene.width; ++i) {
-				// generate primary ray direction
-				float x = (2 * (i + 0.5) / (float)scene.width - 1) * imageAspectRatio * scale;
-				float y = (1 - 2 * (j + 0.5) / (float)scene.height) * scale;
+                int write_index = j * scene.width + i;
+                for (int a = 0; a < msaa_sample; ++a){
+                    for (int b = 0; b < msaa_sample; ++b) {
+                        // generate primary ray direction
+                        float x = (2 * (i + offset[a]) / (float)scene.width - 1) * imageAspectRatio * scale;
+                        float y = (1 - 2 * (j + offset[b]) / (float)scene.height) * scale;
 
-				Vector3f dir = normalize(Vector3f(-x, y, 1));
+                        Vector3f dir = normalize(Vector3f(-x, y, 1));
 
-				int write_index = j * scene.width + i;
 
-				for (int k = 0; k < spp; k++)
-				{
-					framebuffer[write_index] += scene.castRay(Ray(eye_pos, dir), 0) / spp;
-				}
+                        for (int k = 0; k < spp; k++)
+                        {
+                            framebuffer[write_index] += scene.castRay(Ray(eye_pos, dir), 0) / spp;
+                        }
+                    }
+                }
+                framebuffer[write_index] = framebuffer[write_index] / mass_sample2;
+				
 #pragma omp critical
 				finish_num += 1;
 
@@ -90,7 +106,7 @@ void Renderer::Render(const Scene& scene)
     }*/
 
     // save framebuffer to file
-    FILE* fp = fopen("binary_pt_Microfacet_Blinn_test.ppm", "wb");
+    FILE* fp = fopen("binary_pt_Microfacet_Blinn_MSAA.ppm", "wb");
     (void)fprintf(fp, "P6\n%d %d\n255\n", scene.width, scene.height);
     for (auto i = 0; i < scene.height * scene.width; ++i) {
         static unsigned char color[3];

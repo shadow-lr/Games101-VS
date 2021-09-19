@@ -218,8 +218,6 @@ void BVHAccel::BuildSAH(BVHBuildNode*& node, std::vector<Object*>& objects, Boun
                 minCostIndex = j;
                 // 分哪个分量的时候代价最小 (x, y, z)
                 minCostCoor = i;
-
-                std::cout << "i = " << i << std::endl;
             }
         }
 
