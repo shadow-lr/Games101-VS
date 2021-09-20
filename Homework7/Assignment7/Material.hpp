@@ -7,7 +7,7 @@
 
 #include "Vector.hpp"
 
-enum MaterialType { DIFFUSE, Microfacet, MicrofacetGlossy};
+enum MaterialType { DIFFUSE, Microfacet, MicrofacetGlossy, MICROFACET_Test1, MICROFACET_Test2};
 
 class Material{
 private:
@@ -145,6 +145,10 @@ public:
 	inline float pdf(const Vector3f& wi, const Vector3f& wo, const Vector3f& N);
 	// given a ray, calculate the contribution of this ray
 	inline Vector3f eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& N);
+	inline float eval_microfacet(
+		const Vector3f& wi, const Vector3f& wo, const Vector3f& N,
+		const float& ior, const float& roughness
+	);
 };
 
 Material::Material(MaterialType t, Vector3f e) {
@@ -163,6 +167,51 @@ bool Material::hasEmission() {
 
 Vector3f Material::getColorAt(double u, double v) {
     return Vector3f();
+}
+
+float Material::eval_microfacet(
+	const Vector3f& wi, const Vector3f& wo, const Vector3f& N,
+	const float& ior, const float& roughness
+) {
+	float eps = 1e-6;
+	Vector3f h = normalize(-wi + wo);
+	float N_dot_wo = std::max(0.0f, dotProduct(wo, N));
+	float N_dot_wi = std::max(0.0f, dotProduct(-wi, N));
+	float N_dot_h = std::max(0.0f, dotProduct(h, N));
+	float m = roughness; //rms slope, roughness
+	// fresnel term, exact form
+	float F;
+	fresnel(wi, N, ior, F);
+	// shadow masking term
+	float G = 1;
+	float G1 = 2 * N_dot_h * N_dot_wo
+		/ std::max(0.0f, dotProduct(wo, h));
+	float G2 = 2 * N_dot_h * N_dot_wi
+		/ std::max(0.0f, dotProduct(wo, h));
+	G = std::min({ G, G1, G2 });
+
+	// G = std::max(G, 0.0f);
+	// normal distribution, beckman distribution
+	float D;
+	float m2 = m * m;
+	float chi_Nh = (float)(N_dot_h > 0);
+	float alpha = acos(N_dot_h);
+	float tan_alpha = tan(alpha);
+	float cos_alpha = cos(alpha);
+	float cos_alpha2 = cos_alpha * cos_alpha;
+	float cos_alpha4 = cos_alpha2 * cos_alpha2;
+	D = chi_Nh * exp(-tan_alpha * tan_alpha / m2)
+		/ M_PI / m2 / cos_alpha4;
+
+	// float ker_dist = N_dot_h / m;
+	// D = exp(-ker_dist*ker_dist);
+
+	// USER_NOTE:
+	// use the cook-torrance formula on wiki, page: Specular_highlight
+	// float fr = (F*G*D) / 4 / std::max(eps, N_dot_wi*N_dot_wo);
+	float fr = (F * G * D) / M_PI / std::max(eps, N_dot_wi * N_dot_wo);
+	// std::clog << fr << std::endl;
+	return fr;
 }
 
 /// <summary>
@@ -276,7 +325,7 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 		float cosalpha = dotProduct(N, wo);
 		if (cosalpha > -EPSILON) {
 			// Blinn-Phong
-			Vector3f View2Point = -wo;
+			Vector3f View2Point = wo;
 			Vector3f lightDir = wi;
 
 			Vector3f half_vector = (View2Point + lightDir).normalized();
@@ -296,6 +345,26 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 			auto ans = Ks * spec + Kd / M_PI;
 			//  clamp(0, 1, ans.x); clamp(0, 1, ans.y); clamp(0, 1, ans.z);
 			return ans;
+		}
+		else
+			return Vector3f(0.0f);
+		break;
+	}
+	case MICROFACET_Test1:  // added by user for Microfacet model
+	{
+		float cosalpha = dotProduct(N, wo);
+		if (cosalpha > -EPSILON) {
+			return Ks * eval_microfacet(wi, wo, N, 20.0, 0.2) + Kd / M_PI;
+		}
+		else
+			return Vector3f(0.0f);
+		break;
+	}
+	case MICROFACET_Test2:  // added by user for Microfacet model
+	{
+		float cosalpha = dotProduct(N, wo);
+		if (cosalpha > -EPSILON) {
+			return Ks * eval_microfacet(wi, wo, N, 1.5f, 0.01f) + Kd / M_PI;
 		}
 		else
 			return Vector3f(0.0f);

@@ -24,7 +24,7 @@ void Renderer::Render(const Scene& scene)
     //int m = 0;
 
     // change the spp value to change sample ammount
-    int spp = 500;
+    int spp = 20;
     std::cout << "SPP: " << spp << "\n";
 
     int finish_num = 0;

@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 {
 	// Change the definition here to change resolution
 	omp_init_lock(&lock);
-	Scene scene(200, 200);
+	Scene scene(500, 500);
 
 	// Vector3f(0.0f)是否是自发光
 	Material* red = new Material(DIFFUSE, Vector3f(0.0f));
@@ -38,7 +38,6 @@ int main(int argc, char** argv)
 	//silver->Ks = Vector3f(0.6f, 0.6f, 0.6f);
 	//silver->Kd = Vector3f(0.6f, 0.6f, 0.6f);
 	//silver->roughness = 0.06f;
-	silver->ior = 20.0f;
 
 	Material* microfacet_glossy = new Material(MicrofacetGlossy, Vector3f(0));
 	microfacet_glossy->Ks = Vector3f(0.4, 0.4, 0.4);
@@ -57,8 +56,20 @@ int main(int argc, char** argv)
 	std::array<float, 3> scale = { 500.0f,500.0f,500.0f };
 	MeshTriangle bunny("./Homework7/Assignment7/models/bunny/bunny.obj", white, splitMethod, translate, scale);
 
-	Sphere sphere(Vector3f(150.0f, 100.0f, 300.0f), 100, glass);
-	Sphere sphere1(Vector3f(350.0f, 100.0f, 400.0f), 100, microfacet_glossy);
+	//Sphere sphere(Vector3f(150.0f, 100.0f, 300.0f), 100, glass);
+	//Sphere sphere1(Vector3f(350.0f, 100.0f, 400.0f), 100, microfacet_glossy);
+
+	Material* microfacet_test1 = new Material(MICROFACET_Test1, Vector3f(0.0f));
+	microfacet_test1->Ks = Vector3f(0.4f);
+	// microfacet->Kd = Vector3f(0.1f);    
+	microfacet_test1->Kd = Vector3f(0.2f, 0.2f, 0.05f);
+	Material* microfacet_test2 = new Material(MICROFACET_Test2, Vector3f(0.0f));
+	microfacet_test2->Ks = Vector3f(0.4f);
+	// microfacet_2->Kd = Vector3f(0.1f);
+	microfacet_test2->Kd = Vector3f(0.05f, 0.05f, 0.2f);
+
+	Sphere sphere_l(Vector3f(150, 100, 300), 100.0f, microfacet_test1);
+	Sphere sphere_r(Vector3f(400, 100, 300), 100.0f, microfacet_test2);
 
 	scene.Add(&floor);
 	//scene.Add(&shortbox);
@@ -66,8 +77,11 @@ int main(int argc, char** argv)
 	scene.Add(&left);
 	scene.Add(&right);
 	scene.Add(&light_);
-	scene.Add(&sphere);
-	scene.Add(&sphere1);
+	//scene.Add(&sphere);
+	//scene.Add(&sphere1);
+	scene.Add(&sphere_l);
+	scene.Add(&sphere_r);
+
 	scene.Add(&bunny);
 
 	scene.build(splitMethod);
