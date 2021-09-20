@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 {
 	// Change the definition here to change resolution
 	omp_init_lock(&lock);
-	Scene scene(500, 500);
+	Scene scene(1024, 1024);
 
 	// Vector3f(0.0f)是否是自发光
 	Material* red = new Material(DIFFUSE, Vector3f(0.0f));
@@ -31,57 +31,50 @@ int main(int argc, char** argv)
 	Material* glass = new Material(Microfacet, Vector3f(0.0f));
 	glass->Kd = Vector3f(0.3f, 0.3f, 0.3f);
 	//glass->Ks = Vector3f(0.8f, 0.8f, 0.8f);
-	//glass->roughness = 0.06f;
+	glass->roughness = 0.05f;
 	glass->ior = 20.0f;
+
 
 	Material* silver = new Material(MicrofacetGlossy, Vector3f(0.0f));
 	//silver->Ks = Vector3f(0.6f, 0.6f, 0.6f);
 	//silver->Kd = Vector3f(0.6f, 0.6f, 0.6f);
-	//silver->roughness = 0.06f;
+	silver->roughness = 0.1f;
+	silver->ior = 200.0f;
 
 	Material* microfacet_glossy = new Material(MicrofacetGlossy, Vector3f(0));
-	microfacet_glossy->Ks = Vector3f(0.4, 0.4, 0.4);
-	microfacet_glossy->Kd = Vector3f(0.05, 0.05, 0.2);
+	microfacet_glossy->Kd = Vector3f(0.3f, 0.3f, 0.3f);
+	microfacet_glossy->roughness = 0.2f;
+	microfacet_glossy->ior = 1.5f;
+	//microfacet_glossy->Ks = Vector3f(0.4, 0.4, 0.4);
+	//microfacet_glossy->Kd = Vector3f(0.05, 0.05, 0.2);
 
 	BVHAccel::SplitMethod splitMethod = BVHAccel::SplitMethod::NAIVE;
 
 	MeshTriangle floor("./Homework7/Assignment7/models/cornellbox/floor.obj", white, splitMethod);
 	//MeshTriangle shortbox("./Homework7/Assignment7/models/cornellbox/shortbox.obj", white, splitMethod);
-	//MeshTriangle tallbox("./Homework7/Assignment7/models/cornellbox/tallbox.obj", microfacet_glossy, splitMethod);
+	MeshTriangle tallbox("./Homework7/Assignment7/models/cornellbox/tallbox.obj", silver, splitMethod);
 	MeshTriangle left("./Homework7/Assignment7/models/cornellbox/left.obj", red, splitMethod);
 	MeshTriangle right("./Homework7/Assignment7/models/cornellbox/right.obj", green, splitMethod);
 	MeshTriangle light_("./Homework7/Assignment7/models/cornellbox/light.obj", light, splitMethod);
 
-	std::array<float, 3> translate = { 350.0f,0.0f,150.0f };
-	std::array<float, 3> scale = { 500.0f,500.0f,500.0f };
+	std::array<float, 3> translate = { 350.0f,-50.0f,50.0f };
+	std::array<float, 3> scale = { 1500.0f,1500.0f,1500.0f };
 	MeshTriangle bunny("./Homework7/Assignment7/models/bunny/bunny.obj", white, splitMethod, translate, scale);
 
-	//Sphere sphere(Vector3f(150.0f, 100.0f, 300.0f), 100, glass);
+	Sphere sphere(Vector3f(150.0f, 100.0f, 300.0f), 100, glass);
 	//Sphere sphere1(Vector3f(350.0f, 100.0f, 400.0f), 100, microfacet_glossy);
+	Sphere glassBall(Vector3f(278.0f, 278.0f, 200.0f), 50.0f, glass);
 
-	Material* microfacet_test1 = new Material(MICROFACET_Test1, Vector3f(0.0f));
-	microfacet_test1->Ks = Vector3f(0.4f);
-	// microfacet->Kd = Vector3f(0.1f);    
-	microfacet_test1->Kd = Vector3f(0.2f, 0.2f, 0.05f);
-	Material* microfacet_test2 = new Material(MICROFACET_Test2, Vector3f(0.0f));
-	microfacet_test2->Ks = Vector3f(0.4f);
-	// microfacet_2->Kd = Vector3f(0.1f);
-	microfacet_test2->Kd = Vector3f(0.05f, 0.05f, 0.2f);
-
-	Sphere sphere_l(Vector3f(150, 100, 300), 100.0f, microfacet_test1);
-	Sphere sphere_r(Vector3f(400, 100, 300), 100.0f, microfacet_test2);
 
 	scene.Add(&floor);
 	//scene.Add(&shortbox);
-	//scene.Add(&tallbox);
+	scene.Add(&tallbox);
 	scene.Add(&left);
 	scene.Add(&right);
 	scene.Add(&light_);
-	//scene.Add(&sphere);
+	scene.Add(&sphere);
 	//scene.Add(&sphere1);
-	scene.Add(&sphere_l);
-	scene.Add(&sphere_r);
-
+	//scene.Add(&glassBall);
 	scene.Add(&bunny);
 
 	scene.build(splitMethod);

@@ -126,7 +126,7 @@ public:
 	MaterialType m_type;
 	//Vector3f m_color;
 	Vector3f m_emission;
-	//float roughness;
+	float roughness;
 	float ior;
 	Vector3f Kd, Ks;
 	float specularExponent;
@@ -225,7 +225,7 @@ Vector3f Material::sample(const Vector3f& wi, const Vector3f& N)
 	switch (m_type)
 	{
 		// 对漫反射材质采样与入射光线无关
-	case DIFFUSE: case Microfacet: case MicrofacetGlossy:
+	case DIFFUSE:case Microfacet:
 	{
 		// uniform sample on the hemisphere
 		float x_1 = get_random_float(), x_2 = get_random_float();
@@ -247,6 +247,10 @@ Vector3f Material::sample(const Vector3f& wi, const Vector3f& N)
 		return toWorld(localRay, N);
 
 		break;
+	}
+	case MicrofacetGlossy:
+	{
+		return toWorld(reflect(-wi, N), N);
 	}
 	}
 }
@@ -287,7 +291,7 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 	{
 		float cosalpha = dotProduct(N, wo);
 		if (cosalpha > -EPSILON) {
-			float roughness = 0.001f;
+			//float roughness = 0.1f;
 			//float refractive = 1.85f;
 
 			Vector3f View2Point = -wi;
@@ -311,10 +315,11 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 
 			// enery conservation
 			//Vector3f Ks = Vector3f(F);
-			Vector3f _Ks = Vector3f(1.0f) - Kd;
+			 Vector3f Ks = Vector3f(1.0f) - Kd;
+			//Vector3f _Ks = Vector3f(1.0f) - Kd;
 			//Vector3f KD = Vector3f(1.0f) - vec_fresnel;
 
-			return (1 - F) * Kd * f_diffuse + F * f_cook_torrance;
+			return Kd * f_diffuse + F * f_cook_torrance;
 		}
 		else
 			return Vector3f(0.0f);
@@ -324,52 +329,55 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 	{
 		float cosalpha = dotProduct(N, wo);
 		if (cosalpha > -EPSILON) {
-			// Blinn-Phong
-			Vector3f View2Point = wo;
-			Vector3f lightDir = wi;
+			//float roughness = 0.1f;
+			//float refractive = 1.85f;
+
+			Vector3f View2Point = -wi;
+			Vector3f lightDir = wo;
 
 			Vector3f half_vector = (View2Point + lightDir).normalized();
-			//float nDotHalf = fmaxf(dotProduct(N, half_vector), 0.0f);
 
-			//float roughness = 0.01f;
-			//float F;
-			//fresnel(wi, N, ior, F);
-			//float G = GeometryFunction(N, View2Point, lightDir, roughness);
-			//float weight_inv = fabs((fmaxf(dotProduct(View2Point, N), 0.0f) * fmaxf(dotProduct(half_vector, N), 0.0f))) / fmaxf(dotProduct(View2Point, half_vector), 0.0f);
+			float D = NormalDistributionFunction(N, half_vector, roughness);
+			float F;
+			float G = GeometryFunction(N, View2Point, lightDir, roughness);
 
-			//return G * weight_inv * F;
+			// Tips:wi
+			fresnel(wi, N, ior, F);
+			//Vector3f F0(0.95f, 0.93f, 0.88f);
+			//Vector3f vec_fresnel = fresnelSchilck(N, View2Point, F0);
 
-			//auto h = normalize(wi + wo);
-			double p = 25;
-			double spec = pow(std::max(0.0f, dotProduct(N, half_vector)), p);
-			auto ans = Ks * spec + Kd / M_PI;
-			//  clamp(0, 1, ans.x); clamp(0, 1, ans.y); clamp(0, 1, ans.z);
-			return ans;
+			float crossWiWo = 4 * fmaxf(dotProduct(View2Point, N), 0.0f) * fmaxf(dotProduct(lightDir, N), 0.0f);
+
+			float f_diffuse = 1.0f / M_PI;
+			float f_cook_torrance = D * F * G / (std::max(crossWiWo, 0.001f));
+
+			// enery conservation
+			//Vector3f Ks = Vector3f(F);
+			Vector3f Ks = Vector3f(1.0f) - Kd;
+			//Vector3f _Ks = Vector3f(1.0f) - Kd;
+			//Vector3f KD = Vector3f(1.0f) - vec_fresnel;
+
+			return Kd * f_diffuse + F * f_cook_torrance;
 		}
 		else
 			return Vector3f(0.0f);
 		break;
 	}
-	case MICROFACET_Test1:  // added by user for Microfacet model
-	{
-		float cosalpha = dotProduct(N, wo);
-		if (cosalpha > -EPSILON) {
-			return Ks * eval_microfacet(wi, wo, N, 20.0, 0.2) + Kd / M_PI;
-		}
-		else
-			return Vector3f(0.0f);
-		break;
-	}
-	case MICROFACET_Test2:  // added by user for Microfacet model
-	{
-		float cosalpha = dotProduct(N, wo);
-		if (cosalpha > -EPSILON) {
-			return Ks * eval_microfacet(wi, wo, N, 1.5f, 0.01f) + Kd / M_PI;
-		}
-		else
-			return Vector3f(0.0f);
-		break;
-	}
+	//case MicrofacetGlossy:
+	//{
+	//	float cosalpha = dotProduct(N, wo);
+	//	if (cosalpha > -EPSILON) {
+	//		// Blinn-Phong
+	//		Vector3f View2Point = wo;
+	//		Vector3f lightDir = wi;
+
+	//		Vector3f half_vector = (View2Point + lightDir).normalized();
+	//		return reflect(-wi, N) / fabs(dotProduct(N, wi));
+	//	}
+	//	else
+	//		return Vector3f(0.0f);
+	//	break;
+	//}
 	}
 }
 
