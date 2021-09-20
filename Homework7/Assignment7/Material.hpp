@@ -126,7 +126,7 @@ public:
 	MaterialType m_type;
 	//Vector3f m_color;
 	Vector3f m_emission;
-	float roughness;
+	//float roughness;
 	float ior;
 	Vector3f Kd, Ks;
 	float specularExponent;
@@ -176,7 +176,7 @@ Vector3f Material::sample(const Vector3f& wi, const Vector3f& N)
 	switch (m_type)
 	{
 		// 对漫反射材质采样与入射光线无关
-	case DIFFUSE:
+	case DIFFUSE: case Microfacet: case MicrofacetGlossy:
 	{
 		// uniform sample on the hemisphere
 		float x_1 = get_random_float(), x_2 = get_random_float();
@@ -199,51 +199,14 @@ Vector3f Material::sample(const Vector3f& wi, const Vector3f& N)
 
 		break;
 	}
-	case Microfacet:
-	{
-		// uniform sample on the hemisphere
-		float x_1 = get_random_float(), x_2 = get_random_float();
-		float z = std::fabs(1.0f - 2.0f * x_1);
-		float r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
-		Vector3f localRay(r * std::cos(phi), r * std::sin(phi), z);
-		return toWorld(localRay, N);
-
-		break;
-	}
-	case MicrofacetGlossy:
-	{
-		// uniform sample on the hemisphere
-		float x_1 = get_random_float(), x_2 = get_random_float();
-		float z = std::fabs(1.0f - 2.0f * x_1);
-		float r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
-		Vector3f localRay(r * std::cos(phi), r * std::sin(phi), z);
-		return toWorld(localRay, N);
-		break;
-	}
 	}
 }
 
 float Material::pdf(const Vector3f& wi, const Vector3f& wo, const Vector3f& N) {
 	switch (m_type) {
-	case DIFFUSE:
+	case DIFFUSE: case Microfacet: case MicrofacetGlossy:
 	{
 		// uniform sample probability 1 / (2 * PI)
-		if (dotProduct(wo, N) > -EPSILON)
-			return 0.5f / M_PI;
-		else
-			return 0.0f;
-		break;
-	}
-	case Microfacet:
-	{
-		if (dotProduct(wo, N) > -EPSILON)
-			return 0.5f / M_PI;
-		else
-			return 0.0f;
-		break;
-	}
-	case MicrofacetGlossy:
-	{
 		if (dotProduct(wo, N) > -EPSILON)
 			return 0.5f / M_PI;
 		else
@@ -275,7 +238,7 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 	{
 		float cosalpha = dotProduct(N, wo);
 		if (cosalpha > -EPSILON) {
-			//float roughness = 0.1f;
+			float roughness = 0.001f;
 			//float refractive = 1.85f;
 
 			Vector3f View2Point = -wi;
@@ -299,10 +262,10 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 
 			// enery conservation
 			//Vector3f Ks = Vector3f(F);
-			//Vector3f Ks = Vector3f(1.0f) - Kd;
+			Vector3f _Ks = Vector3f(1.0f) - Kd;
 			//Vector3f KD = Vector3f(1.0f) - vec_fresnel;
 
-			return (1.0f - F) * Kd * f_diffuse + Ks * f_cook_torrance;
+			return (1 - F) * Kd * f_diffuse + F * f_cook_torrance;
 		}
 		else
 			return Vector3f(0.0f);
@@ -317,11 +280,22 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 			Vector3f lightDir = wi;
 
 			Vector3f half_vector = (View2Point + lightDir).normalized();
-			float nDotHalf = fmaxf(dotProduct(N, half_vector), 0.0f);
+			//float nDotHalf = fmaxf(dotProduct(N, half_vector), 0.0f);
 
-			int p = 12;
+			//float roughness = 0.01f;
+			//float F;
+			//fresnel(wi, N, ior, F);
+			//float G = GeometryFunction(N, View2Point, lightDir, roughness);
+			//float weight_inv = fabs((fmaxf(dotProduct(View2Point, N), 0.0f) * fmaxf(dotProduct(half_vector, N), 0.0f))) / fmaxf(dotProduct(View2Point, half_vector), 0.0f);
 
-			return Kd / M_PI + Ks * powf(nDotHalf, p);
+			//return G * weight_inv * F;
+
+			//auto h = normalize(wi + wo);
+			double p = 25;
+			double spec = pow(std::max(0.0f, dotProduct(N, half_vector)), p);
+			auto ans = Ks * spec + Kd / M_PI;
+			//  clamp(0, 1, ans.x); clamp(0, 1, ans.y); clamp(0, 1, ans.z);
+			return ans;
 		}
 		else
 			return Vector3f(0.0f);
