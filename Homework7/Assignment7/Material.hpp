@@ -269,8 +269,8 @@ float Material::pdf(const Vector3f& wi, const Vector3f& wo, const Vector3f& N) {
 	}
 }
 
-/// <param name="wi">入射</param>
-/// <param name="wo">出射</param>
+/// <param name="wi">pos2light</param>
+/// <param name="wo">-ray.direction()</param>
 /// <param name="N">法向量</param>
 /// <returns>return diffuse; Vector3f diffuse = Kd / M_PI;</returns>
 Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& N) {
@@ -294,21 +294,18 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 			//float roughness = 0.1f;
 			//float refractive = 1.85f;
 
-			Vector3f View2Point = -wi;
-			Vector3f lightDir = wo;
-
-			Vector3f half_vector = (View2Point + lightDir).normalized();
+			Vector3f half_vector = (wo + wi).normalized();
 
 			float D = NormalDistributionFunction(N, half_vector, roughness);
 			float F;
-			float G = GeometryFunction(N, View2Point, lightDir, roughness); 
+			float G = GeometryFunction(N, wo, wi, roughness); 
 
 			// Tips:wi
 			fresnel(wi, N, ior, F);
 			//Vector3f F0(0.95f, 0.93f, 0.88f);
 			//Vector3f vec_fresnel = fresnelSchilck(N, View2Point, F0);
 
-			float crossWiWo = 4 * fmaxf(dotProduct(View2Point, N), 0.0f) * fmaxf(dotProduct(lightDir, N), 0.0f);
+			float crossWiWo = 4 * fmaxf(dotProduct(wi, N), 0.0f) * fmaxf(dotProduct(wo, N), 0.0f);
 
 			float f_diffuse = 1.0f / M_PI;
 			float f_cook_torrance = D * F * G / (std::max(crossWiWo, 0.001f));
@@ -327,19 +324,16 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 	}
 	case MicrofacetGlossy:
 	{
-		Vector3f Point2View = -wi;
-		Vector3f lightDir = wo;
-
 		float cosalpha = dotProduct(N, wo);
-		float cosbeta = dotProduct(N, Point2View);
+		float cosbeta = dotProduct(N, wi);
 
 		if (cosalpha * cosbeta > -EPSILON) {
-			Vector3f h = normalize(Point2View + wo);
+			Vector3f h = normalize(wi + wo);
 			//Vector3f fr = fresnelSchilck(N, h, { 0.03f,0.03,0.03f });
-			float fr = fresnelSchilick(wo, h, ior);
+			float fr = fresnelSchilick(wi, h, ior);
 			float D = NormalDistributionFunction(N, h, roughness);
 			//float G = GeometryFunction(N, Point2View, wo, roughness);
-			float G = GeometrySmith(N, Point2View, wo, roughness);
+			float G = GeometrySmith(N, wi, wo, roughness);
 
 			float bsdf = fr * D * G / fabsf(4 * cosbeta * cosbeta);
 
@@ -558,7 +552,7 @@ void Material::ImportanceSampleGgxVdn(Vector3f& wg, Vector3f& wo, const Vector3f
 
 /// <param name="wi">-ray.direction()</param>
 /// <param name="N">法线向量</param>
-/// <param name="wo">出射光线</param>
+/// <param name="wo">需要采样出的出射光线</param>
 /// <param name="pdf">概率密度函数</param>
 /// <returns></returns>
 Vector3f Material::ggxSample(Vector3f& wi, const Vector3f& N, Vector3f& wo, float& pdf) {

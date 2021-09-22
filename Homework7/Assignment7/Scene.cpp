@@ -105,20 +105,14 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
     }
 
 	Vector3f L_dir = { 0,0,0 };
-	Vector3f L_indir = { 0,0,0 };
 
 	Intersection light;
 	float m_pdf = 0.0;
 	sampleLight(light, m_pdf);
 
-	// pos
-	Vector3f normal = pos.normal;
-
-	Vector3f wo = light.coords - pos.coords;
-	Vector3f obj2LightDir = pos2Light.normalized();
-
 	// Get x, ws, NN, emit from inter
 	// Shoot a ray from p to x
+	// 作业框架中符号说明
 	// x 光源点
 	// p 物体着色点
 	// wo 往像素发射的入射光线
@@ -126,18 +120,34 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
 	// N objectInter法线向量
 	// NN lightInter法线向量
 
+	// 本文中符号说明
+	// wo eye_pos往交点的入射光线
+	// wi 交点往光源点的射线
+
+	// pos
+	Vector3f N = pos.normal;
+	Vector3f NN = light.normal;
+
+	Vector3f wo = normalize(-ray.direction);
+	Vector3f pos2Light = light.coords - pos.coords;
+	Vector3f ws = pos2Light.normalized();
+
 	float distance = pos2Light.norm();
     float sqrMagnitude = pos2Light.x * pos2Light.x + pos2Light.y * pos2Light.y + pos2Light.y + pos2Light.z * pos2Light.z;
 
-	auto m_emit = light.emit;
-	auto m_eval = pos.m->eval(ray.direction, obj2LightDir, pos.normal);
+	Ray pos2LightRay{ pos.coords, ws };
+    Intersection lightInter = intersect(pos2LightRay);
 
-    Ray obj2LightRay{ pos.coords, obj2LightDir };
-    Intersection Light = intersect(obj2LightRay);
-
-    if (Light.distance - distance >= -EPSILON)
+	// 判断交点与光源点之间是否有其他物体遮挡
+    if (lightInter.distance - distance >= -EPSILON)
     {
-        L_dir = m_emit * m_eval * dotProduct(obj2LightDir, pos.normal) * dotProduct(-obj2LightDir, lightInter.normal) / sqrMagnitude / m_pdf;
+		// 此时看成ws射向交点，从wo反射回eys_pos
+        L_dir = light.emit * pos.m->eval(ws, wo, N)
+			* dotProduct(ws, N) * dotProduct(-ws, NN) / sqrMagnitude / m_pdf;
+
+		L_dir.x = clamp(0, L_dir.x, 1);
+		L_dir.y = clamp(0, L_dir.y, 1);
+		L_dir.z = clamp(0, L_dir.z, 1);
     }
 
     if (get_random_float() >= RussianRoulette)
@@ -145,46 +155,50 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
         return L_dir;
     }
 
+	Vector3f L_indir = { 0,0,0 };
+
 	// important samping for ggx
 	if (pos.m->getType() == MicrofacetGlossy)
 	{
-		Vector3f wi = normalize(-ray.direction);
-		// wo will be changed
-		Vector3f wo{ 0.0f };
-
+		// ggx特殊采样出wi方向向量
+		Vector3f wi;
 		float pdf_;
 
-		Vector3f brdf = pos.m->ggxSample(wi, pos.normal, wo, pdf_);
-		//printf("m_pdf = %f\n", m_pdf);
+		Vector3f brdf = pos.m->ggxSample(wo, N, wi, pdf_);
 
 		if (pdf_ > 0)
 		{
-			wo = wo.normalized();
-			Ray ref(pos.coords, wo);
+			wi = wi.normalized();
+			Ray ref(pos.coords, wi);
 			Intersection pos2 = intersect(ref);
 			if (pos2.happened && !pos2.m->hasEmission()) {
-				L_indir = castRay(ref, depth + 1) * brdf * fabsf(dotProduct(wo, pos.normal)) / (pdf_ * RussianRoulette);
-				L_indir.x = clamp(0, L_indir.x, 1);
-				L_indir.y = clamp(0, L_indir.y, 1);
-				L_indir.z = clamp(0, L_indir.z, 1);
+				Vector3f result = castRay(ref, depth + 1);
+				result.x = clamp(0, result.x, 1);
+				result.y = clamp(0, result.y, 1);
+				result.z = clamp(0, result.z, 1);
+				L_indir = result * brdf * fabsf(dotProduct(wi, N)) / (pdf_ * RussianRoulette);
+				//format(L_indir);
 			}
 		}
 	}
 	else
 	{
-		Vector3f objRSample = pos.m->sample(ray.direction, pos.normal);
-		Ray obj2NextObjRay{ pos.coords, objRSample.normalized() };
-		Intersection nextObjIntersection = intersect(obj2NextObjRay);
+		// 采样出wi方向向量
+		Vector3f wi = normalize(pos.m->sample(wo, pos.normal));
+		Ray pos2NextObjRay{ pos.coords, wi };
+		Intersection nextObjIntersection = intersect(pos2NextObjRay);
 
 		if (nextObjIntersection.happened && !nextObjIntersection.m->hasEmission())
 		{
-			m_pdf = pos.m->pdf(ray.direction, objRSample.normalized(), pos.normal);
-			Vector3f result = castRay(obj2NextObjRay, depth + 1);
+			//m_pdf = pos.m->pdf(ray.direction, wi, pos.normal);
+			Vector3f result = castRay(pos2NextObjRay, depth + 1);
 			result.x = clamp(0, 1, result.x);
 			result.y = clamp(0, 1, result.y);
 			result.z = clamp(0, 1, result.z);
-			L_indir = result * pos.m->eval(ray.direction, objRSample.normalized(), pos.normal)
-				* dotProduct(objRSample.normalized(), pos.normal) / m_pdf / RussianRoulette;
+			L_indir = result * pos.m->eval(wo, wi, N)
+				* dotProduct(wi, N) / pos.m->pdf(wo, wi, N) / RussianRoulette;
+
+			//format(L_indir);
 		}
 	}
 
