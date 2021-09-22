@@ -142,13 +142,41 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
 
 	if (nextObjIntersection.happened && !nextObjIntersection.m->hasEmission())
 	{
-		m_pdf = objectInter.m->pdf(ray.direction, objRSample.normalized(), objectInter.normal);
-        Vector3f result = castRay(obj2NextObjRay, depth + 1);
-        result.x = clamp(0, 1, result.x);
-        result.y = clamp(0, 1, result.y);
-        result.z = clamp(0, 1, result.z);
-		L_indir = result * objectInter.m->eval(ray.direction, objRSample.normalized(), objectInter.normal)
-            * dotProduct(objRSample.normalized(), objectInter.normal) / m_pdf / RussianRoulette;
+        // important samping for ggx
+        if (objectInter.m->getType() == MicrofacetGlossy)
+        {
+            Vector3f wi = -ray.direction;
+            // wo will be changed
+            Vector3f wo{ 0.0f };
+
+            float pdf_;
+
+            Vector3f brdf = objectInter.m->ggxSample(wi, objectInter.normal, wo, pdf_);
+            //printf("m_pdf = %f\n", m_pdf);
+
+            if (pdf_ > 0)
+            {
+                wo = wo.normalized();
+                Ray ref(objectInter.coords, wo);
+                Intersection pos2 = intersect(ref);
+                if (pos2.happened && !pos2.m->hasEmission()) {
+                    L_indir = castRay(ref, depth + 1) * brdf * fabsf(dotProduct(wo, objectInter.normal)) / (pdf_ * RussianRoulette);
+                    L_indir.x = clamp(0, L_indir.x, 1);
+                    L_indir.y = clamp(0, L_indir.y, 1);
+                    L_indir.z = clamp(0, L_indir.z, 1);
+                }
+            }
+        }
+        else
+        {
+			m_pdf = objectInter.m->pdf(ray.direction, objRSample.normalized(), objectInter.normal);
+			Vector3f result = castRay(obj2NextObjRay, depth + 1);
+			result.x = clamp(0, 1, result.x);
+			result.y = clamp(0, 1, result.y);
+			result.z = clamp(0, 1, result.z);
+			L_indir = result * objectInter.m->eval(ray.direction, objRSample.normalized(), objectInter.normal)
+				* dotProduct(objRSample.normalized(), objectInter.normal) / m_pdf / RussianRoulette;
+        }
 	}
 
     return L_dir + L_indir;

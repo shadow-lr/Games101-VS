@@ -1,7 +1,3 @@
-//
-// Created by goksu on 2/25/20.
-//
-
 #include <fstream>
 #include <chrono>
 #include "Scene.hpp"
@@ -21,10 +17,9 @@ void Renderer::Render(const Scene& scene)
     float scale = tan(deg2rad(scene.fov * 0.5));
     float imageAspectRatio = scene.width / (float)scene.height;
     Vector3f eye_pos(278, 273, -800);
-    //int m = 0;
 
     // change the spp value to change sample ammount
-    int spp = 1024;
+    int spp = 30;
     std::cout << "SPP: " << spp << "\n";
 
     int finish_num = 0;
@@ -65,7 +60,6 @@ void Renderer::Render(const Scene& scene)
 
 							Vector3f dir = normalize(Vector3f(-x, y, 1));
 
-
 							for (int k = 0; k < spp; k++)
 							{
 								framebuffer[write_index] += scene.castRay(Ray(eye_pos, dir), 0) / spp;
@@ -105,7 +99,7 @@ void Renderer::Render(const Scene& scene)
     UpdateProgress(1.f);
 
     // save framebuffer to file
-    FILE* fp = fopen("binary_pt_CookTorrance_Glass4.ppm", "wb");
+    FILE* fp = fopen("binary_pt_CookTorrance_Glass5.png", "wb");
     (void)fprintf(fp, "P6\n%d %d\n255\n", scene.width, scene.height);
     for (auto i = 0; i < scene.height * scene.width; ++i) {
         static unsigned char color[3];

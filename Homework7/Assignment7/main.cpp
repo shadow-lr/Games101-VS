@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 {
 	// Change the definition here to change resolution
 	omp_init_lock(&lock);
-	Scene scene(1024, 1024);
+	Scene scene(200, 200);
 
 	// Vector3f(0.0f)是否是自发光
 	Material* red = new Material(DIFFUSE, Vector3f(0.0f));
@@ -43,28 +43,32 @@ int main(int argc, char** argv)
 
 	Material* microfacet_glossy = new Material(MicrofacetGlossy, Vector3f(0));
 	microfacet_glossy->Kd = Vector3f(0.3f, 0.3f, 0.3f);
-	microfacet_glossy->roughness = 0.2f;
-	microfacet_glossy->ior = 1.5f;
+	microfacet_glossy->roughness = 0.05f;
+	//microfacet_glossy->ior = 1.5f;
 	//microfacet_glossy->Ks = Vector3f(0.4, 0.4, 0.4);
 	//microfacet_glossy->Kd = Vector3f(0.05, 0.05, 0.2);
+
+	Material* mirror = new Material(MicrofacetGlossy, Vector3f(0));
+	mirror->Kd = Vector3f(0.95, 0.93, 0.88);
+	mirror->roughness = 0.0001;
+	mirror->ior = 30;
 
 	BVHAccel::SplitMethod splitMethod = BVHAccel::SplitMethod::NAIVE;
 
 	MeshTriangle floor("./Homework7/Assignment7/models/cornellbox/floor.obj", white, splitMethod);
 	//MeshTriangle shortbox("./Homework7/Assignment7/models/cornellbox/shortbox.obj", white, splitMethod);
-	MeshTriangle tallbox("./Homework7/Assignment7/models/cornellbox/tallbox.obj", silver, splitMethod);
+	MeshTriangle tallbox("./Homework7/Assignment7/models/cornellbox/tallbox.obj", mirror, splitMethod);
 	MeshTriangle left("./Homework7/Assignment7/models/cornellbox/left.obj", red, splitMethod);
 	MeshTriangle right("./Homework7/Assignment7/models/cornellbox/right.obj", green, splitMethod);
 	MeshTriangle light_("./Homework7/Assignment7/models/cornellbox/light.obj", light, splitMethod);
 
 	std::array<float, 3> translate = { 350.0f,-50.0f,50.0f };
 	std::array<float, 3> scale = { 1500.0f,1500.0f,1500.0f };
-	MeshTriangle bunny("./Homework7/Assignment7/models/bunny/bunny.obj", white, splitMethod, translate, scale);
+	MeshTriangle bunny("./Homework7/Assignment7/models/bunny/bunny.obj", mirror, splitMethod, translate, scale);
 
-	Sphere sphere(Vector3f(150.0f, 100.0f, 300.0f), 100, glass);
+	Sphere sphere(Vector3f(150.0f, 100.0f, 300.0f), 100, mirror);
 	//Sphere sphere1(Vector3f(350.0f, 100.0f, 400.0f), 100, microfacet_glossy);
 	Sphere glassBall(Vector3f(278.0f, 278.0f, 200.0f), 50.0f, glass);
-
 
 	scene.Add(&floor);
 	//scene.Add(&shortbox);

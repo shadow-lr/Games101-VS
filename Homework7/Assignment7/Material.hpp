@@ -72,7 +72,9 @@ private:
 	Vector3f fresnelSchilck(const Vector3f& normal, const Vector3f& View2Point, const Vector3f& F0)
 	{
 		Vector3f one = Vector3f(1.0f);
-		return F0 + (one - F0) * powf(1.0 - fmaxf(dotProduct(normal, View2Point), 0.0f), 5.0);
+		// if parme is float ior
+		// F0 = pow((ior - 1) / (ior + 1), 2)
+		return F0 + (one - F0) * powf(1.0 - dotProduct(normal, View2Point), 5.0);
 	}
 
 	float GeometryFunction(const Vector3f& normal, const Vector3f& view2Point, const Vector3f& lightDir, const float& roughness) const
@@ -83,7 +85,8 @@ private:
 
 		// G(n, v, l, k) = Gsub(n, v, k)Gsub(n, l, k)
 		// kdirect = (a + 1) * (a + 1) / 8
-		float k = pow(roughness + 1.0f, 2.0f) / 8.0f;
+		//float k = pow(roughness + 1.0f, 2.0f) / 8.0f;
+		float k = roughness;
 
 		float ggx1 = GeometryFunctionCalculate(normal, view2Point, k);
 		float ggx2 = GeometryFunctionCalculate(normal, lightDir, k);
@@ -104,8 +107,9 @@ private:
         // NDF = a * a / (M_PI * x * x)
         float a2 = roughness * roughness;
         float nDotH2 = pow(fmaxf(dotProduct(normal, half_vector), 0.0f), 2.0f);
+		float nom = a2;
         float denom = M_PI * pow(nDotH2 * (a2 - 1.0f) + 1.0f, 2);
-        return a2 / denom;
+        return nom / denom;
 	}
 
 	Vector3f toWorld(const Vector3f& a, const Vector3f& N) {
@@ -145,10 +149,24 @@ public:
 	inline float pdf(const Vector3f& wi, const Vector3f& wo, const Vector3f& N);
 	// given a ray, calculate the contribution of this ray
 	inline Vector3f eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& N);
-	inline float eval_microfacet(
-		const Vector3f& wi, const Vector3f& wo, const Vector3f& N,
-		const float& ior, const float& roughness
-	);
+
+	inline float fresnelSchilick(const Vector3f& wi, const Vector3f& half_vector, const float& ior);
+
+	// specular DDX important sample in ND
+	inline Vector3f SchlickFresnel(const Vector3f& r0, float radians);
+	inline float SmithGGXMasking(const Vector3f& wi, const Vector3f& wo, const Vector3f& N, float a2);
+	inline float SmithGGXMaskingShadowing(const Vector3f& wi, const Vector3f& wo, const Vector3f& N, float a2);
+	inline Vector3f SphericalToCartesian(const float theta, const float phi);
+	inline void ImportanceSampleGgxD(Vector3f& wi, const Vector3f& wo, const Vector3f& N, Vector3f& reflectance);
+	inline Vector3f GgxVndf(const Vector3f& wo, float roughness, float u1, float u2);
+	inline void ImportanceSampleGgxVdn(Vector3f& wg, Vector3f& wo, const Vector3f& N, Vector3f& wi, Vector3f& reflectance);
+
+	/// <param name="wi">入射光线</param>
+	/// <param name="N">法线</param>
+	/// <param name="wo">出射光先</param>
+	/// <param name="pdf">概率密度函数</param>
+	/// <returns></returns>
+	inline Vector3f ggxSample(Vector3f& wi, const Vector3f& N, Vector3f& wo, float& pdf);
 };
 
 Material::Material(MaterialType t, Vector3f e) {
@@ -169,49 +187,11 @@ Vector3f Material::getColorAt(double u, double v) {
     return Vector3f();
 }
 
-float Material::eval_microfacet(
-	const Vector3f& wi, const Vector3f& wo, const Vector3f& N,
-	const float& ior, const float& roughness
-) {
-	float eps = 1e-6;
-	Vector3f h = normalize(-wi + wo);
-	float N_dot_wo = std::max(0.0f, dotProduct(wo, N));
-	float N_dot_wi = std::max(0.0f, dotProduct(-wi, N));
-	float N_dot_h = std::max(0.0f, dotProduct(h, N));
-	float m = roughness; //rms slope, roughness
-	// fresnel term, exact form
-	float F;
-	fresnel(wi, N, ior, F);
-	// shadow masking term
-	float G = 1;
-	float G1 = 2 * N_dot_h * N_dot_wo
-		/ std::max(0.0f, dotProduct(wo, h));
-	float G2 = 2 * N_dot_h * N_dot_wi
-		/ std::max(0.0f, dotProduct(wo, h));
-	G = std::min({ G, G1, G2 });
-
-	// G = std::max(G, 0.0f);
-	// normal distribution, beckman distribution
-	float D;
-	float m2 = m * m;
-	float chi_Nh = (float)(N_dot_h > 0);
-	float alpha = acos(N_dot_h);
-	float tan_alpha = tan(alpha);
-	float cos_alpha = cos(alpha);
-	float cos_alpha2 = cos_alpha * cos_alpha;
-	float cos_alpha4 = cos_alpha2 * cos_alpha2;
-	D = chi_Nh * exp(-tan_alpha * tan_alpha / m2)
-		/ M_PI / m2 / cos_alpha4;
-
-	// float ker_dist = N_dot_h / m;
-	// D = exp(-ker_dist*ker_dist);
-
-	// USER_NOTE:
-	// use the cook-torrance formula on wiki, page: Specular_highlight
-	// float fr = (F*G*D) / 4 / std::max(eps, N_dot_wi*N_dot_wo);
-	float fr = (F * G * D) / M_PI / std::max(eps, N_dot_wi * N_dot_wo);
-	// std::clog << fr << std::endl;
-	return fr;
+inline float Material::fresnelSchilick(const Vector3f& wi, const Vector3f& half_vector, const float& ior)
+{
+	float cosTheta = dotProduct(wi, half_vector);
+	float R0 = powf((ior - 1) / (ior + 1), 2);
+	return R0 + (1 - R0) * powf((1 - cosTheta), 5);
 }
 
 /// <summary>
@@ -225,7 +205,7 @@ Vector3f Material::sample(const Vector3f& wi, const Vector3f& N)
 	switch (m_type)
 	{
 		// 对漫反射材质采样与入射光线无关
-	case DIFFUSE:case Microfacet:
+	case DIFFUSE:case Microfacet:case MicrofacetGlossy:
 	{
 		// uniform sample on the hemisphere
 		float x_1 = get_random_float(), x_2 = get_random_float();
@@ -248,10 +228,10 @@ Vector3f Material::sample(const Vector3f& wi, const Vector3f& N)
 
 		break;
 	}
-	case MicrofacetGlossy:
-	{
-		return toWorld(reflect(-wi, N), N);
-	}
+	//case MicrofacetGlossy:
+	//{
+	//	return toWorld(reflect(-wi, N), N);
+	//}
 	}
 }
 
@@ -327,57 +307,274 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 	}
 	case MicrofacetGlossy:
 	{
+		Vector3f View2Point = -wi;
+		Vector3f lightDir = wo;
+
 		float cosalpha = dotProduct(N, wo);
-		if (cosalpha > -EPSILON) {
-			//float roughness = 0.1f;
-			//float refractive = 1.85f;
+		float cosbeta = dotProduct(N, View2Point);
 
-			Vector3f View2Point = -wi;
-			Vector3f lightDir = wo;
+		if (cosalpha * cosbeta > -EPSILON) {
+			Vector3f h = normalize(View2Point + wo);
+			Vector3f fr = fresnelSchilck(N, View2Point, { 0.03f,0.03,0.03f });
+			float D = NormalDistributionFunction(N, h, roughness);
+			float G = GeometryFunction(N, View2Point, wo, roughness);
 
-			Vector3f half_vector = (View2Point + lightDir).normalized();
+			float OdotH = dotProduct(wo, h);
+			float IdotH = dotProduct(View2Point, h);
 
-			float D = NormalDistributionFunction(N, half_vector, roughness);
-			float F;
-			float G = GeometryFunction(N, View2Point, lightDir, roughness);
-
-			// Tips:wi
-			fresnel(wi, N, ior, F);
-			//Vector3f F0(0.95f, 0.93f, 0.88f);
-			//Vector3f vec_fresnel = fresnelSchilck(N, View2Point, F0);
-
-			float crossWiWo = 4 * fmaxf(dotProduct(View2Point, N), 0.0f) * fmaxf(dotProduct(lightDir, N), 0.0f);
-
-			float f_diffuse = 1.0f / M_PI;
-			float f_cook_torrance = D * F * G / (std::max(crossWiWo, 0.001f));
-
-			// enery conservation
-			//Vector3f Ks = Vector3f(F);
-			Vector3f Ks = Vector3f(1.0f) - Kd;
-			//Vector3f _Ks = Vector3f(1.0f) - Kd;
-			//Vector3f KD = Vector3f(1.0f) - vec_fresnel;
-
-			return Kd * f_diffuse + F * f_cook_torrance;
+			return Kd * fr * D * G / fabs(4 * cosalpha * cosbeta);
 		}
 		else
-			return Vector3f(0.0f);
-		break;
-	}
-	//case MicrofacetGlossy:
-	//{
-	//	float cosalpha = dotProduct(N, wo);
-	//	if (cosalpha > -EPSILON) {
-	//		// Blinn-Phong
-	//		Vector3f View2Point = wo;
-	//		Vector3f lightDir = wi;
+			return Vector3f(0);
 
-	//		Vector3f half_vector = (View2Point + lightDir).normalized();
-	//		return reflect(-wi, N) / fabs(dotProduct(N, wi));
-	//	}
-	//	else
-	//		return Vector3f(0.0f);
-	//	break;
-	//}
+
+		//if (cosalpha > -EPSILON) {
+
+		//	Vector3f sample_wi{ 0 };
+		//	Vector3f reflectance{ 0 };
+		//	Vector3f wg{ 0 };
+
+		//	Vector3f this_wo = -wi;
+		//	Vector3f this_wi = { 0 };
+
+		//	ImportanceSampleGgxD(sample_wi, wo, N, reflectance);
+		//	//ImportanceSampleGgxVdn(wg, this_wo, N, this_wi, reflectance);
+
+		//	return Kd / M_PI + reflectance;
+
+		//	//float roughness = 0.1f;
+		//	//float refractive = 1.85f;
+
+		//	Vector3f View2Point = -wi;
+		//	Vector3f lightDir = wo;
+
+		//	Vector3f half_vector = (View2Point + lightDir).normalized();
+
+		//	float D = NormalDistributionFunction(N, half_vector, roughness);
+		//	float F;
+		//	float G = GeometryFunction(N, View2Point, lightDir, roughness);
+
+		//	// Tips:wi
+		//	fresnel(wi, N, ior, F);
+		//	//Vector3f F0(0.95f, 0.93f, 0.88f);
+		//	//Vector3f vec_fresnel = fresnelSchilck(N, View2Point, F0);
+
+		//	float crossWiWo = 4 * fmaxf(dotProduct(View2Point, N), 0.0f) * fmaxf(dotProduct(lightDir, N), 0.0f);
+
+		//	float f_diffuse = 1.0f / M_PI;
+		//	float f_cook_torrance = D * F * G / (std::max(crossWiWo, 0.001f));
+
+		//	// enery conservation
+		//	//Vector3f Ks = Vector3f(F);
+		//	Vector3f Ks = Vector3f(1.0f) - Kd;
+		//	//Vector3f _Ks = Vector3f(1.0f) - Kd;
+		//	//Vector3f KD = Vector3f(1.0f) - vec_fresnel;
+
+		//	return Kd * f_diffuse + F * f_cook_torrance;
+		//}
+		//else
+		//	return Vector3f(0.0f);
+		//break;
+	}
+	}
+}
+
+Vector3f Material::SchlickFresnel(const Vector3f& r0, float radians)
+{
+	// -- The common Schlick Fresnel approximation
+	float exponential = powf(1.0f - radians, 5.0f);
+	// 假设此处是玻璃
+	//Vector3f r0 = Vector3f(0.5, 0.5, 0.5);
+	return r0 + (Vector3f(1.0f) - r0) * exponential;
+}
+
+float Material::SmithGGXMasking(const Vector3f& wi, const Vector3f& wo, const Vector3f& N, float a2)
+{
+	float dotNL = dotProduct(N, wi);
+	float dotNV = dotProduct(N, wo);
+	float denomC = sqrtf(a2 + (1.0f - a2) * dotNV * dotNV) + dotNV;
+
+	return 2.0f * dotNV / denomC;
+}
+
+//====================================================================
+// non height-correlated masking-shadowing function is described here:
+float Material::SmithGGXMaskingShadowing(const Vector3f& wi, const Vector3f& wo, const Vector3f& N, float a2)
+{
+	float dotNL = dotProduct(N, wi);
+	float dotNV = dotProduct(N, wo);
+
+	float denomA = dotNV * sqrtf(a2 + (1.0f - a2) * dotNL * dotNL);
+	float denomB = dotNL * sqrtf(a2 + (1.0f - a2) * dotNV * dotNV);
+
+	return 2.0f * dotNL * dotNV / (denomA + denomB);
+}
+
+Vector3f Material::SphericalToCartesian(const float theta, const float phi)
+{
+	//float x = std::cos(theta);
+	//float y = std::sin(theta) * std::cos(phi);
+	//float z = std::sin(theta) * std::sin(phi);
+
+	float x = std::sin(theta) * std::cos(phi);
+	float y = std::sin(theta) * std::sin(phi);
+	float z = std::cos(theta);
+
+	// y轴
+	//float x = std::sin(theta) * std::cos(phi);
+	//float y = std::cos(theta);
+	//float z = std::sin(theta) * std::sin(phi);
+
+	return Vector3f(x, y, z);
+}
+
+Vector3f Material::GgxVndf(const Vector3f& wo, float roughness, float u1, float u2)
+{
+	// -- Stretch the view vector so we are sampling as though
+	// -- roughness==1
+	Vector3f v = Vector3f(wo.x * roughness,
+		wo.y,
+		wo.z * roughness).normalized();
+
+	// -- Build an orthonormal basis with v, t1, and t2
+	Vector3f t1 = (v.y < 0.999f) ? crossProduct(v, Vector3f(0, 0, 1)) : Vector3f(1, 0, 0);
+	Vector3f t2 = crossProduct(t1, v);
+
+	// -- Choose a point on a disk with each half of the disk weighted
+	// -- proportionally to its projection onto direction v
+	float a = 1.0f / (1.0f + v.y);
+	float r = sqrtf(u1);
+	float phi = (u2 < a) ? (u2 / a) * M_PI : M_PI + (u2 - a) / (1.0f - a) * M_PI;
+	float p1 = r * std::cos(phi);
+	float p2 = r * std::sin(phi) * ((u2 < a) ? 1.0f : v.y);
+
+	// -- Calculate the normal in this stretched tangent space
+	Vector3f n = p1 * t1 + p2 * t2 + sqrtf(std::fmaxf(0.0f, 1.0f - p1 * p1 - p2 * p2)) * v;
+
+	// -- unstretch and normalize the normal
+	return Vector3f(roughness * n.x, std::max(0.0f, n.y), roughness * n.z).normalized();
+}
+
+
+/// <summary>
+/// 
+/// </summary>
+/// <param name="wg">法线</param>
+/// <param name="wo"></param>
+/// <param name="wi"></param>
+/// <param name="N"></param>
+/// <param name="reflectance"></param>
+void Material::ImportanceSampleGgxD(Vector3f& wi, const Vector3f& wo, const Vector3f& N, Vector3f& reflectance)
+{
+	float a = roughness;
+	float a2 = a * a;
+
+	// -- Generate uniform random variables between 0 and 1
+	float e0 = get_random_float();
+	float e1 = get_random_float();
+
+	// -- Calculate theta and phi for our microfacet normal wm by
+	// -- importance sampling the Ggx distribution of normals
+	float theta = acosf(sqrtf((1.0f - e0) / ((a2 - 1.0f) * e0 + 1.0f)));
+	float phi = 2 * M_PI * e1;
+
+	// -- Convert from spherical to Cartesian coordinates
+	Vector3f wm = SphericalToCartesian(theta, phi);
+	wm = toWorld(wm, N);
+
+	// -- Calculate wi by reflecting wo about wm
+	wi = 2.0f * dotProduct(wo, wm) * wm - (wo);
+
+	// -- Ensure our sample is in the upper hemisphere
+	// -- Since we are in tangent space with a y-up coordinate
+	// -- system BsdfNDot(wi) simply returns wi.y
+	if (dotProduct(N, wi) > -EPSILON && dotProduct(wi, wm) > -EPSILON) {
+
+		//float dotWiWm = fmaxf(dotProduct(wi, wm), 0.01f);
+		float F;
+
+		// -- calculate the reflectance to multiply by the energy
+		// -- retrieved in direction wi
+		fresnel(-wi, N, 20.0f, F);
+		//Vector3f F = SchlickFresnel({ 0.08f,0.08f,0.08f }, dotWiWm);
+		float G = SmithGGXMaskingShadowing(wi, wo, N, a2);
+		float weight = fabsf(dotProduct(wo, wm)) / (dotProduct(N, wo) * dotProduct(N, wm));
+
+		reflectance = Vector3f(F * G * weight);
+	}
+}
+
+void Material::ImportanceSampleGgxVdn(Vector3f& wg, Vector3f& wo, const Vector3f& N, Vector3f& wi, Vector3f& reflectance)
+{
+	//Vector3f specularColor = material->specularColor;
+	Vector3f specularColor = Vector3f(0.5f, 0.5f, 0.5f);
+	float a = roughness;
+	float a2 = a * a;
+
+	float r0 = get_random_float();
+	float r1 = get_random_float();
+	Vector3f wm = GgxVndf(wo, roughness, r0, r1);
+
+	wi = reflect(wm, wo);
+	wi = toWorld(wi, N);
+
+	// BsdfNDot(wi) > 0.0f
+	if (dotProduct(N, wi) > -EPSILON) {
+
+		Vector3f F = SchlickFresnel(specularColor, fmaxf(dotProduct(wi, wm), 0.0f));
+		float G1 = SmithGGXMasking(wi, wo, N, a2);
+		float G2 = SmithGGXMaskingShadowing(wi, wo, N, a2);
+
+		reflectance = F * (G2 / G1);
+
+		std::cout << "F.x = " << F.x << "\t" << "F.y = " << F.y << "\t" << "F.z = " << F.z << std::endl;
+	}
+	else {
+		reflectance = Vector3f(0.0f);
+	}
+}
+
+/// <param name="wi">-ray.direction()</param>
+/// <param name="N">法线向量</param>
+/// <param name="wo">出射光线</param>
+/// <param name="pdf">概率密度函数</param>
+/// <returns></returns>
+Vector3f Material::ggxSample(Vector3f& wi, const Vector3f& N, Vector3f& wo, float& pdf) {
+	float a = roughness;
+	float a2 = a * a;
+
+	float e0 = get_random_float();
+	float e1 = get_random_float();
+	float cos2Theta = (1 - e0) / (e0 * (a2 - 1) + 1);
+	float cosTheta = sqrt(cos2Theta);
+	float sinTheta = sqrt(1 - cos2Theta);
+	float phi = 2 * M_PI * e1;
+	Vector3f localdir(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+	Vector3f h = toWorld(localdir, N);
+
+	float fr = fresnelSchilick(wi, h, ior);
+	bool isReflect = get_random_float() < fr;
+	if (isReflect) {
+		wo = h * 2.0f * dotProduct(wi, h) - wi;
+		if (dotProduct(wi, N) * dotProduct(wo, N) <= 0) {
+			pdf = 0;
+			return Vector3f(0);
+		}
+
+		float D = NormalDistributionFunction(N, h, roughness);
+		pdf = fr * D * dotProduct(h, N) / (4 * (fabsf(dotProduct(wi, h))));
+		float G = GeometryFunction(N, wi, wo, roughness);
+		float bsdf = fr * D * G / fabsf(4.0 * dotProduct(N, wi) * dotProduct(N, wo));
+		//float D = DistributionGGX(N, h, roughness);
+		//pdf = fr * D * dot(h, N) / (4 * (fabs(dot(wi, h))));
+		//float G = GeometrySmith(N, wo, wi, roughness);
+		//float bsdf = fr * D * G / fabsf(4.0 * dot(N, wo) * dot(N, wi));
+
+		return Kd * bsdf;
+	}
+	else {
+		pdf = 0;
+		return Vector3f(0);
 	}
 }
 
