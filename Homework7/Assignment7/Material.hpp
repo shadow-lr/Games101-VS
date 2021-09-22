@@ -77,6 +77,24 @@ private:
 		return F0 + (one - F0) * powf(1.0 - dotProduct(normal, View2Point), 5.0);
 	}
 
+	float GeometrySmith(const Vector3f& normal, const Vector3f& V, const Vector3f& L, float k) const
+	{
+		float NdotV = fmaxf(dotProduct(normal, V), 0.0f);
+		float NdotL = fmaxf(dotProduct(normal, L), 0.0f);
+		float ggx1 = GeometrySchlickGGX(NdotV, k);
+		float ggx2 = GeometrySchlickGGX(NdotL, k);
+
+		return ggx1 * ggx2;
+	}
+
+	float GeometrySchlickGGX(float NdotV, float k) const
+	{
+		float nom = NdotV;
+		float denom = NdotV * (1.0 - k) + k;
+		
+		return nom / denom;
+	}
+
 	float GeometryFunction(const Vector3f& normal, const Vector3f& view2Point, const Vector3f& lightDir, const float& roughness) const
 	{
 		// GGX Schilick-Beckmann
@@ -105,10 +123,12 @@ private:
 	{
 		// set : x = (n ¡¤ h) * (n ¡¤ h) * (a * a - 1) + 1
         // NDF = a * a / (M_PI * x * x)
-        float a2 = roughness * roughness;
-        float nDotH2 = pow(fmaxf(dotProduct(normal, half_vector), 0.0f), 2.0f);
+		float a2 = roughness * roughness;
+		float nDotH = fmaxf(dotProduct(normal, half_vector), 0.0f);
+		float nDotH2 = nDotH * nDotH;
+
 		float nom = a2;
-        float denom = M_PI * pow(nDotH2 * (a2 - 1.0f) + 1.0f, 2);
+        float denom = M_PI * powf(nDotH2 * (a2 - 1.0f) + 1.0f, 2.0f);
         return nom / denom;
 	}
 
@@ -307,25 +327,27 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 	}
 	case MicrofacetGlossy:
 	{
-		Vector3f View2Point = -wi;
+		Vector3f Point2View = -wi;
 		Vector3f lightDir = wo;
 
 		float cosalpha = dotProduct(N, wo);
-		float cosbeta = dotProduct(N, View2Point);
+		float cosbeta = dotProduct(N, Point2View);
 
 		if (cosalpha * cosbeta > -EPSILON) {
-			Vector3f h = normalize(View2Point + wo);
-			Vector3f fr = fresnelSchilck(N, View2Point, { 0.03f,0.03,0.03f });
+			Vector3f h = normalize(Point2View + wo);
+			//Vector3f fr = fresnelSchilck(N, h, { 0.03f,0.03,0.03f });
+			float fr = fresnelSchilick(wo, h, ior);
 			float D = NormalDistributionFunction(N, h, roughness);
-			float G = GeometryFunction(N, View2Point, wo, roughness);
+			//float G = GeometryFunction(N, Point2View, wo, roughness);
+			float G = GeometrySmith(N, Point2View, wo, roughness);
 
-			float OdotH = dotProduct(wo, h);
-			float IdotH = dotProduct(View2Point, h);
+			float bsdf = fr * D * G / fabsf(4 * cosbeta * cosbeta);
 
-			return Kd * fr * D * G / fabs(4 * cosalpha * cosbeta);
+			return Kd * bsdf;
 		}
 		else
 			return Vector3f(0);
+		break;
 
 
 		//if (cosalpha > -EPSILON) {
@@ -550,6 +572,8 @@ Vector3f Material::ggxSample(Vector3f& wi, const Vector3f& N, Vector3f& wo, floa
 	float sinTheta = sqrt(1 - cos2Theta);
 	float phi = 2 * M_PI * e1;
 	Vector3f localdir(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+
+	// sample half vector
 	Vector3f h = toWorld(localdir, N);
 
 	float fr = fresnelSchilick(wi, h, ior);

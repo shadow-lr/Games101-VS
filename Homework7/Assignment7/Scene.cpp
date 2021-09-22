@@ -87,48 +87,57 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
         return {};
     }
 
-    Intersection objectInter = intersect(ray);
-    if (!objectInter.happened)
+	auto format = [](Vector3f& a) {
+		if (a.x < 0) a.x = 0;
+		if (a.y < 0) a.y = 0;
+		if (a.z < 0) a.z = 0;
+	};
+
+    Intersection pos = intersect(ray);
+    if (!pos.happened)
     {
         return {};
     }
 
-    if (objectInter.m->hasEmission())
+    if (pos.m->hasEmission())
     {
-        return objectInter.m->getEmission();
+        return pos.m->getEmission();
     }
 
 	Vector3f L_dir = { 0,0,0 };
 	Vector3f L_indir = { 0,0,0 };
 
-	Intersection lightInter;
+	Intersection light;
 	float m_pdf = 0.0;
-	sampleLight(lightInter, m_pdf);
+	sampleLight(light, m_pdf);
 
-	Vector3f obj2Light = lightInter.coords - objectInter.coords;
-	Vector3f obj2LightDir = obj2Light.normalized();
+	// pos
+	Vector3f normal = pos.normal;
 
-	float distance = obj2Light.norm();
-    float sqrMagnitude = obj2Light.x * obj2Light.x + obj2Light.y * obj2Light.y + obj2Light.y + obj2Light.z * obj2Light.z;
-
-	auto m_emit = lightInter.emit;
-	auto m_eval = objectInter.m->eval(ray.direction, obj2LightDir, objectInter.normal);
+	Vector3f wo = light.coords - pos.coords;
+	Vector3f obj2LightDir = pos2Light.normalized();
 
 	// Get x, ws, NN, emit from inter
 	// Shoot a ray from p to x
-    // x 光源点
-    // p 物体着色点
-    // wo 往像素发射的入射光线
-    // ws 物体往光源发射的射线
-    // N objectInter法线向量
-    // NN lightInter法线向量
+	// x 光源点
+	// p 物体着色点
+	// wo 往像素发射的入射光线
+	// ws 物体往光源发射的射线
+	// N objectInter法线向量
+	// NN lightInter法线向量
 
-    Ray obj2LightRay{ objectInter.coords, obj2LightDir };
+	float distance = pos2Light.norm();
+    float sqrMagnitude = pos2Light.x * pos2Light.x + pos2Light.y * pos2Light.y + pos2Light.y + pos2Light.z * pos2Light.z;
+
+	auto m_emit = light.emit;
+	auto m_eval = pos.m->eval(ray.direction, obj2LightDir, pos.normal);
+
+    Ray obj2LightRay{ pos.coords, obj2LightDir };
     Intersection Light = intersect(obj2LightRay);
 
     if (Light.distance - distance >= -EPSILON)
     {
-        L_dir = m_emit * m_eval * dotProduct(obj2LightDir, objectInter.normal) * dotProduct(-obj2LightDir, lightInter.normal) / sqrMagnitude / m_pdf;
+        L_dir = m_emit * m_eval * dotProduct(obj2LightDir, pos.normal) * dotProduct(-obj2LightDir, lightInter.normal) / sqrMagnitude / m_pdf;
     }
 
     if (get_random_float() >= RussianRoulette)
@@ -136,47 +145,47 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
         return L_dir;
     }
 
-    Vector3f objRSample = objectInter.m->sample(ray.direction, objectInter.normal);
-    Ray obj2NextObjRay{ objectInter.coords, objRSample.normalized() };
-    Intersection nextObjIntersection = intersect(obj2NextObjRay);
-
-	if (nextObjIntersection.happened && !nextObjIntersection.m->hasEmission())
+	// important samping for ggx
+	if (pos.m->getType() == MicrofacetGlossy)
 	{
-        // important samping for ggx
-        if (objectInter.m->getType() == MicrofacetGlossy)
-        {
-            Vector3f wi = -ray.direction;
-            // wo will be changed
-            Vector3f wo{ 0.0f };
+		Vector3f wi = normalize(-ray.direction);
+		// wo will be changed
+		Vector3f wo{ 0.0f };
 
-            float pdf_;
+		float pdf_;
 
-            Vector3f brdf = objectInter.m->ggxSample(wi, objectInter.normal, wo, pdf_);
-            //printf("m_pdf = %f\n", m_pdf);
+		Vector3f brdf = pos.m->ggxSample(wi, pos.normal, wo, pdf_);
+		//printf("m_pdf = %f\n", m_pdf);
 
-            if (pdf_ > 0)
-            {
-                wo = wo.normalized();
-                Ray ref(objectInter.coords, wo);
-                Intersection pos2 = intersect(ref);
-                if (pos2.happened && !pos2.m->hasEmission()) {
-                    L_indir = castRay(ref, depth + 1) * brdf * fabsf(dotProduct(wo, objectInter.normal)) / (pdf_ * RussianRoulette);
-                    L_indir.x = clamp(0, L_indir.x, 1);
-                    L_indir.y = clamp(0, L_indir.y, 1);
-                    L_indir.z = clamp(0, L_indir.z, 1);
-                }
-            }
-        }
-        else
-        {
-			m_pdf = objectInter.m->pdf(ray.direction, objRSample.normalized(), objectInter.normal);
+		if (pdf_ > 0)
+		{
+			wo = wo.normalized();
+			Ray ref(pos.coords, wo);
+			Intersection pos2 = intersect(ref);
+			if (pos2.happened && !pos2.m->hasEmission()) {
+				L_indir = castRay(ref, depth + 1) * brdf * fabsf(dotProduct(wo, pos.normal)) / (pdf_ * RussianRoulette);
+				L_indir.x = clamp(0, L_indir.x, 1);
+				L_indir.y = clamp(0, L_indir.y, 1);
+				L_indir.z = clamp(0, L_indir.z, 1);
+			}
+		}
+	}
+	else
+	{
+		Vector3f objRSample = pos.m->sample(ray.direction, pos.normal);
+		Ray obj2NextObjRay{ pos.coords, objRSample.normalized() };
+		Intersection nextObjIntersection = intersect(obj2NextObjRay);
+
+		if (nextObjIntersection.happened && !nextObjIntersection.m->hasEmission())
+		{
+			m_pdf = pos.m->pdf(ray.direction, objRSample.normalized(), pos.normal);
 			Vector3f result = castRay(obj2NextObjRay, depth + 1);
 			result.x = clamp(0, 1, result.x);
 			result.y = clamp(0, 1, result.y);
 			result.z = clamp(0, 1, result.z);
-			L_indir = result * objectInter.m->eval(ray.direction, objRSample.normalized(), objectInter.normal)
-				* dotProduct(objRSample.normalized(), objectInter.normal) / m_pdf / RussianRoulette;
-        }
+			L_indir = result * pos.m->eval(ray.direction, objRSample.normalized(), pos.normal)
+				* dotProduct(objRSample.normalized(), pos.normal) / m_pdf / RussianRoulette;
+		}
 	}
 
     return L_dir + L_indir;
