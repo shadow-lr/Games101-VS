@@ -19,7 +19,7 @@ void Renderer::Render(const Scene& scene)
     Vector3f eye_pos(278, 273, -800);
 
     // change the spp value to change sample ammount
-    int spp = 30;
+    int spp = 500;
     std::cout << "SPP: " << spp << "\n";
 
     int finish_num = 0;

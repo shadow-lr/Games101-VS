@@ -128,7 +128,10 @@ private:
 		float nDotH2 = nDotH * nDotH;
 
 		float nom = a2;
-        float denom = M_PI * powf(nDotH2 * (a2 - 1.0f) + 1.0f, 2.0f);
+		// 此处float存会溢出 denom 会趋向于0 导致结果接近无穷大
+		double denom = nDotH2 * (a2 - 1.0) + 1.0;
+        //float denom = M_PI * powf(nDotH2 * (a2 - 1.0f) + 1.0f, 2.0f);
+		denom = M_PI * pow(denom, 2.0);
         return nom / denom;
 	}
 
@@ -330,7 +333,7 @@ Vector3f Material::eval(const Vector3f& wi, const Vector3f& wo, const Vector3f& 
 		if (cosalpha * cosbeta > -EPSILON) {
 			Vector3f h = normalize(wi + wo);
 			//Vector3f fr = fresnelSchilck(N, h, { 0.03f,0.03,0.03f });
-			float fr = fresnelSchilick(wi, h, ior);
+			float fr = fresnelSchilick(wo, h, ior);
 			float D = NormalDistributionFunction(N, h, roughness);
 			//float G = GeometryFunction(N, Point2View, wo, roughness);
 			float G = GeometrySmith(N, wi, wo, roughness);
@@ -581,12 +584,8 @@ Vector3f Material::ggxSample(Vector3f& wi, const Vector3f& N, Vector3f& wo, floa
 
 		float D = NormalDistributionFunction(N, h, roughness);
 		pdf = fr * D * dotProduct(h, N) / (4 * (fabsf(dotProduct(wi, h))));
-		float G = GeometryFunction(N, wi, wo, roughness);
-		float bsdf = fr * D * G / fabsf(4.0 * dotProduct(N, wi) * dotProduct(N, wo));
-		//float D = DistributionGGX(N, h, roughness);
-		//pdf = fr * D * dot(h, N) / (4 * (fabs(dot(wi, h))));
-		//float G = GeometrySmith(N, wo, wi, roughness);
-		//float bsdf = fr * D * G / fabsf(4.0 * dot(N, wo) * dot(N, wi));
+		float G = GeometryFunction(N, wo, wi, roughness);
+		float bsdf = fr * D * G / fabsf(4.0 * dotProduct(N, wo) * dotProduct(N, wi));
 
 		return Kd * bsdf;
 	}

@@ -130,24 +130,24 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
 
 	Vector3f wo = normalize(-ray.direction);
 	Vector3f pos2Light = light.coords - pos.coords;
-	Vector3f ws = pos2Light.normalized();
+	Vector3f ws = normalize(pos2Light);
 
 	float distance = pos2Light.norm();
-    float sqrMagnitude = pos2Light.x * pos2Light.x + pos2Light.y * pos2Light.y + pos2Light.y + pos2Light.z * pos2Light.z;
+    float sqrMagnitude = pos2Light.x * pos2Light.x + pos2Light.y * pos2Light.y + pos2Light.z * pos2Light.z;
 
 	Ray pos2LightRay{ pos.coords, ws };
     Intersection lightInter = intersect(pos2LightRay);
 
 	// 判断交点与光源点之间是否有其他物体遮挡
-    if (lightInter.distance - distance >= -EPSILON)
+    if (lightInter.happened && lightInter.distance - distance >= -EPSILON)
     {
 		// 此时看成ws射向交点，从wo反射回eys_pos
         L_dir = light.emit * pos.m->eval(ws, wo, N)
 			* dotProduct(ws, N) * dotProduct(-ws, NN) / sqrMagnitude / m_pdf;
 
-		L_dir.x = clamp(0, L_dir.x, 1);
-		L_dir.y = clamp(0, L_dir.y, 1);
-		L_dir.z = clamp(0, L_dir.z, 1);
+		//L_dir.x = clamp(0, L_dir.x, 1);
+		//L_dir.y = clamp(0, L_dir.y, 1);
+		//L_dir.z = clamp(0, L_dir.z, 1);
     }
 
     if (get_random_float() >= RussianRoulette)
@@ -176,7 +176,7 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
 				result.x = clamp(0, result.x, 1);
 				result.y = clamp(0, result.y, 1);
 				result.z = clamp(0, result.z, 1);
-				L_indir = result * brdf * fabsf(dotProduct(wi, N)) / (pdf_ * RussianRoulette);
+				L_indir = result * brdf * fabsf(dotProduct(wi, N)) / pdf_ / RussianRoulette;
 				//format(L_indir);
 			}
 		}
@@ -184,7 +184,7 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
 	else
 	{
 		// 采样出wi方向向量
-		Vector3f wi = normalize(pos.m->sample(wo, pos.normal));
+		Vector3f wi = normalize(pos.m->sample(wo, N));
 		Ray pos2NextObjRay{ pos.coords, wi };
 		Intersection nextObjIntersection = intersect(pos2NextObjRay);
 
