@@ -7,7 +7,7 @@
 #undef M_PI
 #define M_PI 3.141592653589793f
 
-const int thread_num = 32;
+const int thread_num = 8;
 
 static int thread_finish_count[thread_num + 1]{ 0 };
 

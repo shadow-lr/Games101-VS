@@ -34,7 +34,6 @@ int main(int argc, char** argv)
 	glass->roughness = 0.05f;
 	glass->ior = 20.0f;
 
-
 	Material* silver = new Material(MicrofacetGlossy, Vector3f(0.0f));
 	//silver->Ks = Vector3f(0.6f, 0.6f, 0.6f);
 	//silver->Kd = Vector3f(0.6f, 0.6f, 0.6f);
@@ -62,8 +61,9 @@ int main(int argc, char** argv)
 	MeshTriangle right("./Homework7/Assignment7/models/cornellbox/right.obj", green, splitMethod);
 	MeshTriangle light_("./Homework7/Assignment7/models/cornellbox/light.obj", light, splitMethod);
 
-	std::array<float, 3> translate = { 350.0f,-50.0f,50.0f };
+	std::array<float, 3> translate = { 275.0f,-50.0f,50.0f };
 	std::array<float, 3> scale = { 1500.0f,1500.0f,1500.0f };
+	std::array<float, 3> rotation = { 1500.0f,1500.0f,1500.0f };
 	MeshTriangle bunny("./Homework7/Assignment7/models/bunny/bunny.obj", mirror, splitMethod, translate, scale);
 
 	Sphere sphere(Vector3f(150.0f, 100.0f, 300.0f), 100, mirror);

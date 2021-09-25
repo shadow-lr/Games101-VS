@@ -19,7 +19,7 @@ void Renderer::Render(const Scene& scene)
     Vector3f eye_pos(278, 273, -800);
 
     // change the spp value to change sample ammount
-    int spp = 500;
+    int spp = 200;
     std::cout << "SPP: " << spp << "\n";
 
     int finish_num = 0;
@@ -99,7 +99,7 @@ void Renderer::Render(const Scene& scene)
     UpdateProgress(1.f);
 
     // save framebuffer to file
-    FILE* fp = fopen("binary_pt_CookTorrance_Glass5.ppm", "wb");
+    FILE* fp = fopen("binary_pt_CookTorrance_Glass5_no_depthlimit_Hammersley.ppm", "wb");
     (void)fprintf(fp, "P6\n%d %d\n255\n", scene.width, scene.height);
     for (auto i = 0; i < scene.height * scene.width; ++i) {
         static unsigned char color[3];

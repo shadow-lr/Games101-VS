@@ -82,10 +82,10 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
 {
     // TO DO Implement Path Tracing Algorithm here
 
-    if (depth > maxDepth)
-    {
-        return {};
-    }
+    //if (depth > maxDepth)
+    //{
+    //    return {};
+    //}
 
 	auto format = [](Vector3f& a) {
 		if (a.x < 0) a.x = 0;
@@ -145,9 +145,9 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
         L_dir = light.emit * pos.m->eval(ws, wo, N)
 			* dotProduct(ws, N) * dotProduct(-ws, NN) / sqrMagnitude / m_pdf;
 
-		//L_dir.x = clamp(0, L_dir.x, 1);
-		//L_dir.y = clamp(0, L_dir.y, 1);
-		//L_dir.z = clamp(0, L_dir.z, 1);
+		L_dir.x = clamp(0, L_dir.x, 1);
+		L_dir.y = clamp(0, L_dir.y, 1);
+		L_dir.z = clamp(0, L_dir.z, 1);
     }
 
     if (get_random_float() >= RussianRoulette)

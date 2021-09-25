@@ -114,8 +114,8 @@ private:
 
 	float GeometryFunctionCalculate(const Vector3f& normal, const Vector3f& temp, float k) const
 	{
-		float nDotTemp = fmaxf(dotProduct(normal, temp), 0.0f);
-		float nDotTempDotK = nDotTemp * (1.0f - k) + k;
+		double nDotTemp = fmaxf(dotProduct(normal, temp), 0.0f);
+		double nDotTempDotK = nDotTemp * (1.0f - k) + k;
 		return nDotTemp / nDotTempDotK;
 	}
 
@@ -212,8 +212,8 @@ Vector3f Material::getColorAt(double u, double v) {
 
 inline float Material::fresnelSchilick(const Vector3f& wi, const Vector3f& half_vector, const float& ior)
 {
-	float cosTheta = dotProduct(wi, half_vector);
-	float R0 = powf((ior - 1) / (ior + 1), 2);
+	double cosTheta = dotProduct(wi, half_vector);
+	double R0 = powf((ior - 1) / (ior + 1), 2);
 	return R0 + (1 - R0) * powf((1 - cosTheta), 5);
 }
 
@@ -559,22 +559,22 @@ void Material::ImportanceSampleGgxVdn(Vector3f& wg, Vector3f& wo, const Vector3f
 /// <param name="pdf">¸ÅÂÊÃÜ¶Èº¯Êý</param>
 /// <returns></returns>
 Vector3f Material::ggxSample(Vector3f& wi, const Vector3f& N, Vector3f& wo, float& pdf) {
-	float a = roughness;
-	float a2 = a * a;
+	double a = roughness;
+	double a2 = a * a;
 
-	float e0 = get_random_float();
-	float e1 = get_random_float();
-	float cos2Theta = (1 - e0) / (e0 * (a2 - 1) + 1);
-	float cosTheta = sqrt(cos2Theta);
-	float sinTheta = sqrt(1 - cos2Theta);
-	float phi = 2 * M_PI * e1;
+	double e0 = get_random_float();
+	double e1 = get_random_float();
+	double cos2Theta = (1 - e0) / (e0 * (a2 - 1) + 1);
+	double cosTheta = sqrt(cos2Theta);
+	double sinTheta = sqrt(1 - cos2Theta);
+	double phi = 2 * M_PI * e1;
 	Vector3f localdir(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
 
 	// sample half vector
 	Vector3f h = toWorld(localdir, N);
 
-	float fr = fresnelSchilick(wi, h, ior);
-	bool isReflect = get_random_float() < fr;
+	double fr = fresnelSchilick(wi, h, ior);
+	bool isReflect = get_random_float() <= fr;
 	if (isReflect) {
 		wo = h * 2.0f * dotProduct(wi, h) - wi;
 		if (dotProduct(wi, N) * dotProduct(wo, N) <= 0) {
@@ -582,10 +582,10 @@ Vector3f Material::ggxSample(Vector3f& wi, const Vector3f& N, Vector3f& wo, floa
 			return Vector3f(0);
 		}
 
-		float D = NormalDistributionFunction(N, h, roughness);
+		double D = NormalDistributionFunction(N, h, roughness);
 		pdf = fr * D * dotProduct(h, N) / (4 * (fabsf(dotProduct(wi, h))));
-		float G = GeometryFunction(N, wo, wi, roughness);
-		float bsdf = fr * D * G / fabsf(4.0 * dotProduct(N, wo) * dotProduct(N, wi));
+		double G = GeometryFunction(N, wo, wi, roughness);
+		double bsdf = fr * D * G / fabsf(4.0 * dotProduct(N, wo) * dotProduct(N, wi));
 
 		return Kd * bsdf;
 	}

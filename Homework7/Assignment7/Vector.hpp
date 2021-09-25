@@ -77,7 +77,7 @@ inline Vector3f normalize(const Vector3f &v)
     return v;
 }
 
-inline float dotProduct(const Vector3f &a, const Vector3f &b)
+inline double dotProduct(const Vector3f &a, const Vector3f &b)
 { return a.x * b.x + a.y * b.y + a.z * b.z; }
 
 inline Vector3f crossProduct(const Vector3f &a, const Vector3f &b)
