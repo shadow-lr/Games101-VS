@@ -50,8 +50,8 @@ public:
     const SplitMethod splitMethod;
     std::vector<Object*> primitives;
 
-    void getSample(BVHBuildNode* node, float p, Intersection &pos, float &pdf);
-    void Sample(Intersection &pos, float &pdf);
+    void getSample(BVHBuildNode* node, double p, Intersection &pos, double&pdf);
+    void Sample(Intersection &pos, double&pdf);
 };
 
 struct BVHBuildNode {

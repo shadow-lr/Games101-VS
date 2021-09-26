@@ -231,22 +231,13 @@ Vector3f Material::sample(const Vector3f& wi, const Vector3f& N)
 	case DIFFUSE:case Microfacet:case MicrofacetGlossy:
 	{
 		// uniform sample on the hemisphere
-		float x_1 = get_random_float(), x_2 = get_random_float();
-		// z belongs to [-1, 1]
-		float z = std::fabs(1.0f - 2.0f * x_1);
-		// r belongs to [0, 1]
-		// phi 半球的立体角是2pi
-		float r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
-		// 均匀平滑r的分布 [0, 1]
-		// 采样大小和方向
+		//float x_1 = get_random_float(), x_2 = get_random_float();
+		auto random_uv = get_halton_random_pair();
+		auto x_1 = random_uv.first, x_2 = random_uv.second;
+
+		double z = std::fabs(1.0f - 2.0f * x_1);
+		double r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
 		Vector3f localRay(r * std::cos(phi), r * std::sin(phi), z);
-
-		//float r_1 = get_random_float(), r_2 = get_random_float();
-		//float x = std::cos(2 * M_PI * r_1) * 2 * std::sqrt(r_2 * (1 - r_2));
-		//float y = std::sin(2 * M_PI * r_1) * 2 * std::sqrt(r_2 * (1 - r_2));
-		//float z = 1 - 2 * r_2;
-
-		//Vector3f localRay(x, y, z);
 		return toWorld(localRay, N);
 
 		break;
@@ -562,8 +553,11 @@ Vector3f Material::ggxSample(Vector3f& wi, const Vector3f& N, Vector3f& wo, floa
 	double a = roughness;
 	double a2 = a * a;
 
-	double e0 = get_random_float();
-	double e1 = get_random_float();
+	auto random_e01 = get_halton_random_pair();
+	double e0 = random_e01.first;
+	double e1 = random_e01.second;
+	//double e0 = get_random_float();
+	//double e1 = get_random_float();
 	double cos2Theta = (1 - e0) / (e0 * (a2 - 1) + 1);
 	double cosTheta = sqrt(cos2Theta);
 	double sinTheta = sqrt(1 - cos2Theta);
@@ -574,7 +568,8 @@ Vector3f Material::ggxSample(Vector3f& wi, const Vector3f& N, Vector3f& wo, floa
 	Vector3f h = toWorld(localdir, N);
 
 	double fr = fresnelSchilick(wi, h, ior);
-	bool isReflect = get_random_float() <= fr;
+	//bool isReflect = get_random_float() <= fr;
+	bool isReflect = get_halton_random() <= fr;
 	if (isReflect) {
 		wo = h * 2.0f * dotProduct(wi, h) - wi;
 		if (dotProduct(wi, N) * dotProduct(wo, N) <= 0) {

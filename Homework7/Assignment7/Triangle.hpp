@@ -72,8 +72,9 @@ public:
     }
     Vector3f evalDiffuseColor(const Vector2f&) const override;
     Bounds3 getBounds() override;
-    void Sample(Intersection &pos, float &pdf){
-        float x = std::sqrt(get_random_float()), y = get_random_float();
+    void Sample(Intersection &pos, double&pdf){
+        auto random_uv = get_halton_random_pair();
+        double x = std::sqrt(random_uv.first), y = random_uv.second;
         pos.coords = v0 * (1.0f - x) + v1 * (x * (1.0f - y)) + v2 * (x * y);
         pos.normal = this->normal;
         pdf = 1.0f / area;
@@ -220,7 +221,7 @@ public:
         return intersec;
     }
     
-    void Sample(Intersection &pos, float &pdf){
+    void Sample(Intersection &pos, double &pdf){
         bvh->Sample(pos, pdf);
         pos.emit = m->getEmission();
     }

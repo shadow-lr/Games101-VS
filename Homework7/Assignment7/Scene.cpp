@@ -35,16 +35,17 @@ Intersection Scene::intersect(const Ray &ray) const
     return this->bvh->Intersect(ray);
 }
 
-void Scene::sampleLight(Intersection& pos, float& pdf) const
+void Scene::sampleLight(Intersection& pos, double& pdf) const
 {
 	// 只对含自发光物体sample
-	float emit_area_sum = 0;
+	double emit_area_sum = 0;
 	for (uint32_t k = 0; k < objects.size(); ++k) {
 		if (objects[k]->hasEmit()) {
 			emit_area_sum += objects[k]->getArea();
 		}
 	}
-	float p = get_random_float() * emit_area_sum;
+	//double p = get_random_float() * emit_area_sum;
+	double p = get_halton_random() * emit_area_sum;
 	emit_area_sum = 0;
 	for (uint32_t k = 0; k < objects.size(); ++k) {
 		if (objects[k]->hasEmit()) {
@@ -82,10 +83,10 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
 {
     // TO DO Implement Path Tracing Algorithm here
 
-    //if (depth > maxDepth)
-    //{
-    //    return {};
-    //}
+    if (depth > maxDepth)
+    {
+        return {};
+    }
 
 	auto format = [](Vector3f& a) {
 		if (a.x < 0) a.x = 0;
@@ -107,7 +108,7 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
 	Vector3f L_dir = { 0,0,0 };
 
 	Intersection light;
-	float m_pdf = 0.0;
+	double m_pdf = 0.0;
 	sampleLight(light, m_pdf);
 
 	// Get x, ws, NN, emit from inter
@@ -150,7 +151,8 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
 		L_dir.z = clamp(0, L_dir.z, 1);
     }
 
-    if (get_random_float() >= RussianRoulette)
+    //if (get_random_float() >= RussianRoulette)
+    if (get_halton_random() >= RussianRoulette)
     {
         return L_dir;
     }

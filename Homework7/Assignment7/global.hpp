@@ -36,6 +36,16 @@ inline  bool solveQuadratic(const float& a, const float& b, const float& c, floa
 	return true;
 }
 
+inline double make_halton_sequence(int index, int base) {
+    double f = 1, r = 0;
+    while (index > 0) {
+        f = f / base;
+        r = r + f * (index % base);
+        index = index / base;
+    }
+    return r;
+}
+
 inline float get_random_float()
 {
     static std::random_device dev;
@@ -43,6 +53,28 @@ inline float get_random_float()
     static std::uniform_real_distribution<float> dist(0.f, 1.f); // distribution in range [1, 6]
 
     return dist(rng);
+}
+
+inline std::pair<double, double> get_halton_random_pair()
+{
+	static int index = 0;
+	static int index1 = 0;
+
+	double val = make_halton_sequence(index, 2);
+	double val1 = make_halton_sequence(index1, 3);
+	index++;
+	index1++;
+
+	return { val, val1 };
+}
+
+inline double get_halton_random()
+{
+	static int index = 0;
+	double val = make_halton_sequence(index, 2);
+	index++;
+
+	return val;
 }
 
 inline void UpdateProgress(float progress)
